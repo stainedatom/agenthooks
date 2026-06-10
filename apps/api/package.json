@@ -1,0 +1,25 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "nodemon",
+    "start": "node build/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "mongodb": "^7.3.0",
+    "ollama-ai-provider-v2": "^3.5.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.15.3",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2"
+  }
+}

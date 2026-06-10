@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "esModuleInterop": true,
+    "target": "es2021",
+    "moduleResolution": "nodenext",
+    "sourceMap": false,
+    "outDir": "./build",
+    "rootDir": "./src",
+    "jsx": "preserve"
+  },
+  "lib": ["es2021"]
+}
