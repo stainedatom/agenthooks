@@ -7,7 +7,10 @@
     "sourceMap": false,
     "outDir": "./build",
     "rootDir": "./src",
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "strict": true,
+    "skipLibCheck": true
   },
-  "lib": ["es2021"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "build"]
 }
