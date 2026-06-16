@@ -45,156 +45,86 @@ export default function RegisterPage() {
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Create Account</h1>
-        <p style={styles.subtitle}>Sign up to get started</p>
+    <div className="flex items-center justify-center min-h-screen p-5">
+      <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-sm">
+        <h1 className="text-2xl font-bold m-0 mb-1">Create Account</h1>
+        <p className="text-sm text-gray-500 m-0 mb-6">Sign up to get started</p>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && (
+          <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.field}>
-            <label style={styles.label} htmlFor="name">Name</label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium" htmlFor="name">Name</label>
             <input
               id="name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              style={styles.input}
+              className="px-3 py-2.5 border border-gray-300 rounded-lg text-base outline-none focus:border-gray-400 transition-colors"
               placeholder="Your name"
               autoComplete="name"
             />
           </div>
 
-          <div style={styles.field}>
-            <label style={styles.label} htmlFor="email">Email</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium" htmlFor="email">Email</label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={styles.input}
+              className="px-3 py-2.5 border border-gray-300 rounded-lg text-base outline-none focus:border-gray-400 transition-colors"
               placeholder="you@example.com"
               autoComplete="email"
             />
           </div>
 
-          <div style={styles.field}>
-            <label style={styles.label} htmlFor="password">Password</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium" htmlFor="password">Password</label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={styles.input}
+              className="px-3 py-2.5 border border-gray-300 rounded-lg text-base outline-none focus:border-gray-400 transition-colors"
               placeholder="At least 8 characters"
               autoComplete="new-password"
             />
           </div>
 
-          <div style={styles.field}>
-            <label style={styles.label} htmlFor="confirmPassword">Confirm Password</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium" htmlFor="confirmPassword">Confirm Password</label>
             <input
               id="confirmPassword"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              style={styles.input}
+              className="px-3 py-2.5 border border-gray-300 rounded-lg text-base outline-none focus:border-gray-400 transition-colors"
               placeholder="Repeat your password"
               autoComplete="new-password"
             />
           </div>
 
-          <button type="submit" disabled={loading} style={styles.button}>
+          <button
+            type="submit"
+            disabled={loading}
+            className="py-3 bg-black text-white rounded-lg text-base font-medium cursor-pointer mt-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
+          >
             {loading ? "Creating account..." : "Register"}
           </button>
         </form>
 
-        <p style={styles.footerText}>
+        <p className="text-center mt-5 text-sm text-gray-500">
           Already have an account?{" "}
-          <a href="/login" style={styles.link}>Sign in</a>
+          <a href="/login" className="text-black font-semibold underline">
+            Sign in
+          </a>
         </p>
       </div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: "100vh",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    padding: "20px",
-  },
-  card: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "32px",
-    maxWidth: "400px",
-    width: "100%",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-  },
-  title: {
-    fontSize: "1.5rem",
-    fontWeight: 700,
-    margin: "0 0 4px",
-  },
-  subtitle: {
-    fontSize: "0.9rem",
-    color: "#666",
-    margin: "0 0 24px",
-  },
-  error: {
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: "12px",
-    borderRadius: "8px",
-    marginBottom: "16px",
-    fontSize: "0.9rem",
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px",
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "6px",
-  },
-  label: {
-    fontSize: "0.9rem",
-    fontWeight: 500,
-  },
-  input: {
-    padding: "10px 12px",
-    border: "1px solid #d0d0d0",
-    borderRadius: "8px",
-    fontSize: "1rem",
-    outline: "none",
-  },
-  button: {
-    padding: "12px",
-    background: "#000",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "1rem",
-    fontWeight: 500,
-    cursor: "pointer",
-    marginTop: "8px",
-  },
-  footerText: {
-    textAlign: "center",
-    marginTop: "20px",
-    fontSize: "0.9rem",
-    color: "#666",
-  },
-  link: {
-    color: "#000",
-    fontWeight: 600,
-    textDecoration: "underline",
-  },
-};

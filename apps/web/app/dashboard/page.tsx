@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getMe, logout, User } from "../../lib/api";
 
 export default function DashboardPage() {
@@ -35,8 +36,8 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={styles.container}>
-        <p>Loading...</p>
+      <div className="flex items-center justify-center min-h-screen p-5 bg-gray-50">
+        <p className="text-gray-500">Loading...</p>
       </div>
     );
   }
@@ -46,174 +47,66 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <div style={styles.header}>
-          <h1 style={styles.title}>Dashboard</h1>
-          <button onClick={handleLogout} style={styles.logoutButton}>
+    <div className="flex items-center justify-center min-h-screen p-5 bg-gray-50 font-sans antialiased">
+      <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-sm">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold m-0">Dashboard</h1>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-100 text-red-700 border-none rounded-md text-sm font-medium cursor-pointer hover:bg-red-200 transition-colors"
+          >
             Logout
           </button>
         </div>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && (
+          <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">
+            {error}
+          </div>
+        )}
 
-        <div style={styles.userInfo}>
-          <div style={styles.avatar}>
+        <div className="flex gap-4 items-center p-4 bg-gray-50 rounded-lg mb-6">
+          <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center text-lg font-semibold shrink-0">
             {user.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <p style={styles.name}>{user.name}</p>
-            <p style={styles.email}>{user.email}</p>
-            <p style={styles.meta}>
+            <p className="text-lg font-semibold m-0 mb-0.5">{user.name}</p>
+            <p className="text-sm text-gray-500 m-0 mb-1">{user.email}</p>
+            <p className="text-xs text-gray-400 m-0">
               User ID: {user.id}
               {user.createdAt && ` | Joined: ${new Date(user.createdAt).toLocaleDateString()}`}
             </p>
           </div>
         </div>
 
-        <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Authentication Status</h2>
-          <div style={styles.statusRow}>
-            <span style={styles.statusLabel}>Access Token</span>
-            <span style={styles.statusBadge}>httpOnly Cookie</span>
+        <div className="mb-6">
+          <h2 className="text-base font-semibold m-0 mb-3">Authentication Status</h2>
+          <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+            <span className="text-sm text-gray-700">Access Token</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-gray-200 text-gray-700 font-medium">
+              httpOnly Cookie
+            </span>
           </div>
-          <div style={styles.statusRow}>
-            <span style={styles.statusLabel}>Refresh Token</span>
-            <span style={styles.statusBadge}>httpOnly Cookie</span>
+          <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+            <span className="text-sm text-gray-700">Refresh Token</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-gray-200 text-gray-700 font-medium">
+              httpOnly Cookie
+            </span>
           </div>
-          <div style={styles.statusRow}>
-            <span style={styles.statusLabel}>Authentication</span>
-            <span style={{ ...styles.statusBadge, background: "#d1fae5", color: "#065f46" }}>
+          <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
+            <span className="text-sm text-gray-700">Authentication</span>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-800 font-medium">
               Active
             </span>
           </div>
         </div>
 
-        <div style={styles.links}>
-          <a href="/" style={styles.homeLink}>Back to Home</a>
+        <div className="text-center">
+          <Link href="/" className="text-gray-500 text-sm underline">
+            Back to Home
+          </Link>
         </div>
       </div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: "100vh",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    padding: "20px",
-    background: "#f9fafb",
-  },
-  card: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "32px",
-    maxWidth: "500px",
-    width: "100%",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "24px",
-  },
-  title: {
-    fontSize: "1.5rem",
-    fontWeight: 700,
-    margin: 0,
-  },
-  logoutButton: {
-    padding: "8px 16px",
-    background: "#fee2e2",
-    color: "#b91c1c",
-    border: "none",
-    borderRadius: "6px",
-    fontSize: "0.9rem",
-    fontWeight: 500,
-    cursor: "pointer",
-  },
-  error: {
-    background: "#fee2e2",
-    color: "#b91c1c",
-    padding: "12px",
-    borderRadius: "8px",
-    marginBottom: "16px",
-    fontSize: "0.9rem",
-  },
-  userInfo: {
-    display: "flex",
-    gap: "16px",
-    alignItems: "center",
-    padding: "16px",
-    background: "#f9fafb",
-    borderRadius: "8px",
-    marginBottom: "24px",
-  },
-  avatar: {
-    width: "48px",
-    height: "48px",
-    borderRadius: "50%",
-    background: "#000",
-    color: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "1.2rem",
-    fontWeight: 600,
-    flexShrink: 0,
-  },
-  name: {
-    fontSize: "1.1rem",
-    fontWeight: 600,
-    margin: "0 0 2px",
-  },
-  email: {
-    fontSize: "0.9rem",
-    color: "#666",
-    margin: "0 0 4px",
-  },
-  meta: {
-    fontSize: "0.8rem",
-    color: "#999",
-    margin: 0,
-  },
-  section: {
-    marginBottom: "24px",
-  },
-  sectionTitle: {
-    fontSize: "1rem",
-    fontWeight: 600,
-    margin: "0 0 12px",
-  },
-  statusRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "10px 0",
-    borderBottom: "1px solid #f0f0f0",
-  },
-  statusLabel: {
-    fontSize: "0.9rem",
-    color: "#333",
-  },
-  statusBadge: {
-    fontSize: "0.8rem",
-    padding: "4px 10px",
-    borderRadius: "20px",
-    background: "#e0e0e0",
-    color: "#333",
-    fontWeight: 500,
-  },
-  links: {
-    textAlign: "center",
-  },
-  homeLink: {
-    color: "#666",
-    fontSize: "0.9rem",
-    textDecoration: "underline",
-  },
-};
