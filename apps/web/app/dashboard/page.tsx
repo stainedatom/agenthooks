@@ -2,27 +2,53 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { getMe, logout, User } from "../../lib/api";
+import {
+  getMe,
+  logout,
+  User,
+  listEndpoints,
+  createEndpoint,
+  deleteEndpoint,
+  executeEndpoint,
+  Endpoint,
+  ExecuteResult,
+} from "../../lib/api";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [error, setError] = useState("");
 
+  // Create modal
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newMethod, setNewMethod] = useState("GET");
+  const [newEndpoint, setNewEndpoint] = useState("");
+  const [newTemplate, setNewTemplate] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  // Execute modal
+  const [execEndpoint, setExecEndpoint] = useState<Endpoint | null>(null);
+  const [execResult, setExecResult] = useState<ExecuteResult | null>(null);
+  const [execLoading, setExecLoading] = useState(false);
+  const [execError, setExecError] = useState("");
+
   useEffect(() => {
-    async function fetchUser() {
+    async function init() {
       try {
         const data = await getMe();
         setUser(data.user);
+        const eps = await listEndpoints();
+        setEndpoints(eps);
       } catch {
         router.push("/login");
       } finally {
         setLoading(false);
       }
     }
-    fetchUser();
+    init();
   }, [router]);
 
   async function handleLogout() {
@@ -34,79 +60,301 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    setError("");
+    try {
+      const ep = await createEndpoint({
+        name: newName,
+        method: newMethod,
+        endpoint: newEndpoint,
+        template: newTemplate || undefined,
+      });
+      setEndpoints([ep, ...endpoints]);
+      setShowCreate(false);
+      setNewName("");
+      setNewMethod("GET");
+      setNewEndpoint("");
+      setNewTemplate("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create endpoint");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this endpoint?")) return;
+    try {
+      await deleteEndpoint(id);
+      setEndpoints(endpoints.filter((ep) => ep._id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete");
+    }
+  }
+
+  async function handleExecute(ep: Endpoint) {
+    setExecEndpoint(ep);
+    setExecLoading(true);
+    setExecError("");
+    setExecResult(null);
+    try {
+      const result = await executeEndpoint(ep._id);
+      setExecResult(result);
+    } catch (err) {
+      setExecError(err instanceof Error ? err.message : "Failed to execute");
+    } finally {
+      setExecLoading(false);
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-5 bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <p className="text-gray-500">Loading...</p>
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
+
+  const methodColors: Record<string, string> = {
+    GET: "bg-green-100 text-green-800",
+    POST: "bg-blue-100 text-blue-800",
+    PUT: "bg-orange-100 text-orange-800",
+    PATCH: "bg-yellow-100 text-yellow-800",
+    DELETE: "bg-red-100 text-red-800",
+  };
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-5 bg-gray-50 font-sans antialiased">
-      <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-sm">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold m-0">Dashboard</h1>
+    <div className="min-h-screen bg-gray-50 font-sans antialiased">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center text-sm font-semibold">
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <p className="text-sm font-semibold">{user.name}</p>
+            <p className="text-xs text-gray-500">{user.email}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowCreate(true)}
+            className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
+          >
+            + New Endpoint
+          </button>
           <button
             onClick={handleLogout}
-            className="px-4 py-2 bg-red-100 text-red-700 border-none rounded-md text-sm font-medium cursor-pointer hover:bg-red-200 transition-colors"
+            className="px-3 py-2 text-sm text-gray-600 hover:text-red-600 cursor-pointer transition-colors"
           >
             Logout
           </button>
         </div>
+      </header>
 
+      {/* Main content */}
+      <main className="max-w-4xl mx-auto px-6 py-8">
         {error && (
-          <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">
-            {error}
-          </div>
+          <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</div>
         )}
 
-        <div className="flex gap-4 items-center p-4 bg-gray-50 rounded-lg mb-6">
-          <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center text-lg font-semibold shrink-0">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <p className="text-lg font-semibold m-0 mb-0.5">{user.name}</p>
-            <p className="text-sm text-gray-500 m-0 mb-1">{user.email}</p>
-            <p className="text-xs text-gray-400 m-0">
-              User ID: {user.id}
-              {user.createdAt && ` | Joined: ${new Date(user.createdAt).toLocaleDateString()}`}
+        {endpoints.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-gray-400 text-lg mb-2">No endpoints yet</p>
+            <p className="text-gray-400 text-sm mb-6">
+              Create your first endpoint to start generating UI
             </p>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="px-6 py-3 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
+            >
+              + Create Endpoint
+            </button>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3">
+            {endpoints.map((ep) => (
+              <div
+                key={ep._id}
+                className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center justify-between"
+              >
+                <div className="flex items-center gap-4">
+                  <span
+                    className={`text-xs font-medium px-2.5 py-1 rounded-full ${methodColors[ep.method] || "bg-gray-100 text-gray-700"}`}
+                  >
+                    {ep.method}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold">{ep.name}</p>
+                    <p className="text-xs text-gray-400 font-mono truncate max-w-md">
+                      {ep.endpoint}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleExecute(ep)}
+                    className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+                  >
+                    Run
+                  </button>
+                  <button
+                    onClick={() => handleDelete(ep._id)}
+                    className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
 
-        <div className="mb-6">
-          <h2 className="text-base font-semibold m-0 mb-3">Authentication Status</h2>
-          <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-            <span className="text-sm text-gray-700">Access Token</span>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-gray-200 text-gray-700 font-medium">
-              httpOnly Cookie
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-            <span className="text-sm text-gray-700">Refresh Token</span>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-gray-200 text-gray-700 font-medium">
-              httpOnly Cookie
-            </span>
-          </div>
-          <div className="flex justify-between items-center py-2.5 border-b border-gray-100">
-            <span className="text-sm text-gray-700">Authentication</span>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-800 font-medium">
-              Active
-            </span>
-          </div>
-        </div>
+      {/* Create Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-5">
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-1">New Endpoint</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Connect an external API and define a UI template
+            </p>
 
-        <div className="text-center">
-          <Link href="/" className="text-gray-500 text-sm underline">
-            Back to Home
-          </Link>
+            <form onSubmit={handleCreate} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium">Name</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors"
+                  placeholder="Weather API"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium">Method</label>
+                <select
+                  value={newMethod}
+                  onChange={(e) => setNewMethod(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors bg-white"
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="PATCH">PATCH</option>
+                  <option value="DELETE">DELETE</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium">Endpoint URL</label>
+                <input
+                  type="url"
+                  value={newEndpoint}
+                  onChange={(e) => setNewEndpoint(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors font-mono"
+                  placeholder="https://api.example.com/data"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium">
+                  Template <span className="text-gray-400 font-normal">(Handlebars + Tailwind)</span>
+                </label>
+                <textarea
+                  value={newTemplate}
+                  onChange={(e) => setNewTemplate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors font-mono min-h-[120px]"
+                  placeholder={'<div class="bg-white rounded-xl p-6 shadow-sm">\n  <h2 class="text-xl font-bold">{{name}}</h2>\n  <p class="text-gray-600">{{description}}</p>\n</div>'}
+                />
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="flex-1 py-2.5 bg-black text-white rounded-lg text-sm font-medium cursor-pointer disabled:opacity-50 hover:bg-gray-800 transition-colors"
+                >
+                  {creating ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Execute Result Modal */}
+      {execEndpoint && execResult && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-5">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-bold">{execEndpoint.name}</h2>
+                <p className="text-xs text-gray-400 font-mono">{execEndpoint.endpoint}</p>
+              </div>
+              <button
+                onClick={() => { setExecEndpoint(null); setExecResult(null); }}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer text-xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {/* Rendered HTML */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6 mb-4">
+                <div dangerouslySetInnerHTML={{ __html: execResult.html }} />
+              </div>
+              {/* Raw Data */}
+              <details className="text-xs">
+                <summary className="cursor-pointer text-gray-500 font-medium mb-2">
+                  Raw API Response
+                </summary>
+                <pre className="bg-gray-50 rounded-lg p-4 overflow-x-auto text-xs text-gray-700 max-h-60">
+                  {JSON.stringify(execResult.data, null, 2)}
+                </pre>
+              </details>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Execute Loading Modal */}
+      {execEndpoint && execLoading && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-5">
+          <div className="bg-white rounded-2xl p-8 shadow-xl">
+            <p className="text-gray-500">Executing {execEndpoint.name}...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Execute Error */}
+      {execEndpoint && execError && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-5">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl">
+            <p className="text-red-600 text-sm mb-4">{execError}</p>
+            <button
+              onClick={() => { setExecEndpoint(null); setExecError(""); }}
+              className="px-4 py-2 bg-black text-white rounded-lg text-sm cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

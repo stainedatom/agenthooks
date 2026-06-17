@@ -72,3 +72,55 @@ export async function logout(): Promise<void> {
 export async function getMe(): Promise<AuthResponse> {
   return request<AuthResponse>("/api/auth/me");
 }
+
+// ─── Endpoints ───────────────────────────────────────────
+
+export interface Endpoint {
+  _id: string;
+  userId: string;
+  name: string;
+  method: string;
+  endpoint: string;
+  template: string;
+  parameters: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExecuteResult {
+  html: string;
+  css: string;
+  data: unknown;
+}
+
+export async function listEndpoints(): Promise<Endpoint[]> {
+  return request<Endpoint[]>("/api/endpoints");
+}
+
+export async function createEndpoint(data: {
+  name: string;
+  method: string;
+  endpoint: string;
+  template?: string;
+}): Promise<Endpoint> {
+  return request<Endpoint>("/api/endpoints", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteEndpoint(id: string): Promise<void> {
+  await request<{ message: string }>(`/api/endpoints/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function executeEndpoint(
+  id: string,
+  params?: Record<string, string>
+): Promise<ExecuteResult> {
+  return request<ExecuteResult>(`/api/endpoints/${id}/execute`, {
+    method: "POST",
+    body: JSON.stringify(params || {}),
+  });
+}

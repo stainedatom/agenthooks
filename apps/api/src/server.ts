@@ -4,6 +4,7 @@ import cors from "cors";
 import mongoclient from "./dbclient";
 import { config } from "./config";
 import authRoutes from "./routes/auth";
+import endpointRoutes from "./routes/endpoints";
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use(
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/endpoints", endpointRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {
