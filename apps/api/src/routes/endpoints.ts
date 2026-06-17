@@ -14,10 +14,10 @@ router.use(authenticateToken);
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
     const authReq = req as AuthRequest;
-    const { name, method, endpoint, template, parameters } = req.body;
+    const { description, method, endpoint, template, parameters } = req.body;
 
-    if (!name || !method || !endpoint) {
-      res.status(400).json({ error: "BadRequest", message: "name, method, and endpoint are required" });
+    if (!description || !method || !endpoint) {
+      res.status(400).json({ error: "BadRequest", message: "description, method, and endpoint are required" });
       return;
     }
 
@@ -53,7 +53,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
     const doc = {
       userId: authReq.user.id,
-      name,
+      description,
       method,
       endpoint,
       template: template || "",

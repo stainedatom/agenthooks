@@ -23,7 +23,7 @@ export default function DashboardPage() {
 
   // Create modal
   const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState("");
+  const [newDescription, setNewDescription] = useState("");
   const [newMethod, setNewMethod] = useState("GET");
   const [newEndpoint, setNewEndpoint] = useState("");
   const [newTemplate, setNewTemplate] = useState("");
@@ -66,14 +66,14 @@ export default function DashboardPage() {
     setError("");
     try {
       const ep = await createEndpoint({
-        name: newName,
+        description: newDescription,
         method: newMethod,
         endpoint: newEndpoint,
         template: newTemplate || undefined,
       });
       setEndpoints([ep, ...endpoints]);
       setShowCreate(false);
-      setNewName("");
+      setNewDescription("");
       setNewMethod("GET");
       setNewEndpoint("");
       setNewTemplate("");
@@ -189,7 +189,7 @@ export default function DashboardPage() {
                     {ep.method}
                   </span>
                   <div>
-                    <p className="text-sm font-semibold">{ep.name}</p>
+                    <p className="text-sm font-semibold">{ep.description}</p>
                     <p className="text-xs text-gray-400 font-mono truncate max-w-md">
                       {ep.endpoint}
                     </p>
@@ -226,13 +226,13 @@ export default function DashboardPage() {
 
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium">Name</label>
+                <label className="text-sm font-medium">Description</label>
                 <input
                   type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors"
-                  placeholder="Weather API"
+                  placeholder="Displays weather data"
                   required
                 />
               </div>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
                   value={newTemplate}
                   onChange={(e) => setNewTemplate(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors font-mono min-h-[120px]"
-                  placeholder={'<div class="bg-white rounded-xl p-6 shadow-sm">\n  <h2 class="text-xl font-bold">{{name}}</h2>\n  <p class="text-gray-600">{{description}}</p>\n</div>'}
+                  placeholder={'<div class="bg-white rounded-xl p-6 shadow-sm">\n  <h2 class="text-xl font-bold">{{title}}</h2>\n  <p class="text-gray-600">{{description}}</p>\n</div>'}
                 />
               </div>
 
@@ -303,7 +303,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl max-w-2xl w-full shadow-xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100">
               <div>
-                <h2 className="text-lg font-bold">{execEndpoint.name}</h2>
+                <h2 className="text-lg font-bold">{execEndpoint.description}</h2>
                 <p className="text-xs text-gray-400 font-mono">{execEndpoint.endpoint}</p>
               </div>
               <button
@@ -336,7 +336,7 @@ export default function DashboardPage() {
       {execEndpoint && execLoading && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-5">
           <div className="bg-white rounded-2xl p-8 shadow-xl">
-            <p className="text-gray-500">Executing {execEndpoint.name}...</p>
+            <p className="text-gray-500">Executing {execEndpoint.description}...</p>
           </div>
         </div>
       )}

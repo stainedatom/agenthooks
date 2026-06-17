@@ -78,7 +78,7 @@ export async function getMe(): Promise<AuthResponse> {
 export interface Endpoint {
   _id: string;
   userId: string;
-  name: string;
+  description: string;
   method: string;
   endpoint: string;
   template: string;
@@ -98,7 +98,7 @@ export async function listEndpoints(): Promise<Endpoint[]> {
 }
 
 export async function createEndpoint(data: {
-  name: string;
+  description: string;
   method: string;
   endpoint: string;
   template?: string;
