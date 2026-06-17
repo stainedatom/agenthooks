@@ -13,13 +13,13 @@ function generateTokens(payload: JwtPayload) {
   const accessToken = jwt.sign(
     { id: payload.id, email: payload.email },
     config.accessTokenSecret,
-    { expiresIn: "15m" }
+    { expiresIn: config.accessTokenExpiry as jwt.SignOptions["expiresIn"] }
   );
 
   const refreshToken = jwt.sign(
     { id: payload.id, email: payload.email },
     config.refreshTokenSecret,
-    { expiresIn: "7d" }
+    { expiresIn: config.refreshTokenExpiry as jwt.SignOptions["expiresIn"] }
   );
 
   return { accessToken, refreshToken };
