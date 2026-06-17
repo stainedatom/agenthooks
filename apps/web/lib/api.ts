@@ -30,6 +30,30 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const data = await res.json();
 
   if (!res.ok) {
+    // If the access token expired, attempt a silent refresh and retry once
+    if (res.status === 401 && (data as ApiError).error === "TokenExpired") {
+      const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (refreshRes.ok) {
+        // Retry the original request with the new access token
+        const retryRes = await fetch(`${BASE_URL}${url}`, {
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          ...options,
+        });
+
+        if (retryRes.ok) {
+          return retryRes.json() as Promise<T>;
+        }
+
+        const retryData = await retryRes.json();
+        throw new Error((retryData as ApiError).message || "Something went wrong");
+      }
+    }
+
     throw new Error((data as ApiError).message || "Something went wrong");
   }
 
