@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -9,20 +8,16 @@ import { authenticateToken, AuthRequest, JwtPayload } from "../middleware/auth";
 
 const router = Router();
 
-function generateId(): string {
-  return randomBytes(16).toString("hex");
-}
-
 // Helper: generate tokens
-function generateTokens(payload: JwtPayload, jti?: string) {
+function generateTokens(payload: JwtPayload) {
   const accessToken = jwt.sign(
-    { id: payload.id, email: payload.email } as object,
+    { id: payload.id, email: payload.email },
     config.accessTokenSecret,
     { expiresIn: "15m" }
   );
 
   const refreshToken = jwt.sign(
-    { id: payload.id, email: payload.email, jti: jti || generateId() } as object,
+    { id: payload.id, email: payload.email },
     config.refreshTokenSecret,
     { expiresIn: "7d" }
   );
@@ -89,24 +84,14 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
-      refreshTokens: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
     const userId = result.insertedId.toString();
 
-    // Generate tokens
-    const jti = generateId();
-    const { accessToken, refreshToken } = generateTokens({ id: userId, email: email.toLowerCase() }, jti);
+    const { accessToken, refreshToken } = generateTokens({ id: userId, email: email.toLowerCase() });
 
-    // Store refresh token jti
-    await usersCollection.updateOne(
-      { _id: result.insertedId },
-      { $push: { refreshTokens: jti } as any }
-    );
-
-    // Set cookies
     setAuthCookies(res, accessToken, refreshToken);
 
     res.status(201).json({
@@ -149,17 +134,8 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
 
     const userId = user._id.toString();
 
-    // Generate tokens
-    const jti = generateId();
-    const { accessToken, refreshToken } = generateTokens({ id: userId, email: user.email }, jti);
+    const { accessToken, refreshToken } = generateTokens({ id: userId, email: user.email });
 
-    // Store refresh token jti
-    await usersCollection.updateOne(
-      { _id: user._id },
-      { $push: { refreshTokens: jti } as any }
-    );
-
-    // Set cookies
     setAuthCookies(res, accessToken, refreshToken);
 
     res.json({
@@ -185,48 +161,30 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const db = mongoclient.db(config.dbName);
+    const usersCollection = db.collection(config.usersCollection);
+
     // Verify the refresh token
-    let decoded: JwtPayload & { jti: string };
+    let decoded: JwtPayload;
     try {
-      decoded = jwt.verify(refreshTokenCookie, config.refreshTokenSecret) as JwtPayload & { jti: string };
-    } catch (err) {
+      decoded = jwt.verify(refreshTokenCookie, config.refreshTokenSecret) as JwtPayload;
+    } catch {
       res.status(403).json({ error: "Forbidden", message: "Invalid or expired refresh token" });
       return;
     }
 
-    const db = mongoclient.db(config.dbName);
-    const usersCollection = db.collection(config.usersCollection);
-
-    // Find user and check that the jti is still valid (not rotated yet)
-    const user = await usersCollection.findOne({ _id: new ObjectId(decoded.id) });
+    // Check the user still exists
+    const user = await usersCollection.findOne(
+      { _id: new ObjectId(decoded.id) },
+      { projection: { _id: 1, email: 1, name: 1 } }
+    );
     if (!user) {
       res.status(403).json({ error: "Forbidden", message: "User not found" });
       return;
     }
 
-    // Check if the jti exists in the user's refreshTokens array
-    if (!user.refreshTokens.includes(decoded.jti)) {
-      // Possible token reuse attack — invalidate all refresh tokens for this user
-      await usersCollection.updateOne(
-        { _id: user._id },
-        { $set: { refreshTokens: [] } }
-      );
-      res.status(403).json({ error: "Forbidden", message: "Refresh token has been revoked" });
-      return;
-    }
-
-    // Remove old jti and generate new tokens
-    const newJti = generateId();
-    await usersCollection.updateOne(
-      { _id: user._id },
-      { $pull: { refreshTokens: decoded.jti } as any, $push: { refreshTokens: newJti } as any }
-    );
-
     const userId = user._id.toString();
-    const { accessToken, refreshToken } = generateTokens(
-      { id: userId, email: user.email },
-      newJti
-    );
+    const { accessToken, refreshToken } = generateTokens({ id: userId, email: user.email });
 
     setAuthCookies(res, accessToken, refreshToken);
 
@@ -246,23 +204,6 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
 // POST /api/auth/logout
 router.post("/logout", async (req: Request, res: Response): Promise<void> => {
   try {
-    const refreshTokenCookie = req.cookies?.refresh_token;
-
-    if (refreshTokenCookie) {
-      // Try to decode (ignore errors) to remove the jti from DB
-      try {
-        const decoded = jwt.verify(refreshTokenCookie, config.refreshTokenSecret) as JwtPayload & { jti: string };
-        const db = mongoclient.db(config.dbName);
-        const usersCollection = db.collection(config.usersCollection);
-        await usersCollection.updateOne(
-          { _id: new ObjectId(decoded.id) },
-          { $pull: { refreshTokens: decoded.jti } as any }
-        );
-      } catch {
-        // Token already invalid — just clear cookies
-      }
-    }
-
     // Clear cookies
     res.clearCookie("access_token", { path: "/" });
     res.clearCookie("refresh_token", { path: "/api/auth" });
@@ -284,7 +225,7 @@ router.get("/me", authenticateToken, async (req: Request, res: Response): Promis
 
     const user = await usersCollection.findOne(
       { _id: new ObjectId(authReq.user.id) },
-      { projection: { password: 0, refreshTokens: 0 } }
+      { projection: { password: 0 } }
     );
 
     if (!user) {
