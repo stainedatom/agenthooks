@@ -11,13 +11,13 @@ const router = Router();
 // Helper: generate tokens
 function generateTokens(userId: string) {
   const accessToken = jwt.sign(
-    userId,
+    { user: userId },
     config.accessTokenSecret,
     { expiresIn: "15m"}
   );
 
   const refreshToken = jwt.sign(
-    userId,
+    { user: userId },
     config.refreshTokenSecret,
     { expiresIn: "7d"}
   );
@@ -165,9 +165,9 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
     const usersCollection = db.collection(config.usersCollection);
 
     // Verify the refresh token
-    let decoded: string;
+    let decoded: { user: string };
     try {
-      decoded = jwt.verify(refreshTokenCookie, config.refreshTokenSecret) as string;
+      decoded = jwt.verify(refreshTokenCookie, config.refreshTokenSecret) as { user: string };
     } catch {
       res.status(403).json({ error: "Forbidden", message: "Invalid or expired refresh token" });
       return;
@@ -175,7 +175,7 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
 
     // Check the user still exists
     const user = await usersCollection.findOne(
-      { _id: new ObjectId(decoded) },
+      { _id: new ObjectId(decoded.user) },
       { projection: { _id: 1, email: 1, name: 1 } }
     );
     if (!user) {

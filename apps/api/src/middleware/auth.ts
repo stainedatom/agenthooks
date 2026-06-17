@@ -15,8 +15,8 @@ export function authenticateToken(
   }
 
   try {
-    const decoded = jwt.verify(token, config.accessTokenSecret) as string;
-    req.user = decoded;
+    const decoded = jwt.verify(token, config.accessTokenSecret) as { user: string };
+    req.user = decoded.user;
     next();
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {
