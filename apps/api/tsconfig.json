@@ -7,10 +7,12 @@
     "sourceMap": false,
     "outDir": "./build",
     "rootDir": "./src",
-    "types": ["./src/types/express.d.ts"],
     "jsx": "preserve",
     "strict": true,
     "skipLibCheck": true
+  },
+  "ts-node": {
+    "files": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "build"]
