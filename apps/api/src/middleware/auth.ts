@@ -2,23 +2,12 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { config } from "../config";
 
-export interface JwtPayload {
-  id: string;
-  email: string;
-}
-
-export type AuthRequest = Request & {
-  user: { id: string; email: string };
-  cookies: { [key: string]: string };
-};
-
 export function authenticateToken(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
-  const authReq = req as AuthRequest;
-  const token = authReq.cookies?.access_token;
+) {
+  const token = req.cookies.access_token;
 
   if (!token) {
     res.status(401).json({ error: "Unauthorized", message: "Access token is missing" });
@@ -26,8 +15,8 @@ export function authenticateToken(
   }
 
   try {
-    const decoded = jwt.verify(token, config.accessTokenSecret) as JwtPayload;
-    authReq.user = { id: decoded.id, email: decoded.email };
+    const decoded = jwt.verify(token, config.accessTokenSecret) as string;
+    req.user = decoded;
     next();
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {

@@ -4,22 +4,22 @@ import jwt from "jsonwebtoken";
 import { ObjectId } from "mongodb";
 import { config } from "../config";
 import mongoclient from "../dbclient";
-import { authenticateToken, AuthRequest, JwtPayload } from "../middleware/auth";
+import { authenticateToken } from "../middleware/auth";
 
 const router = Router();
 
 // Helper: generate tokens
-function generateTokens(payload: JwtPayload) {
+function generateTokens(userId: string) {
   const accessToken = jwt.sign(
-    { id: payload.id, email: payload.email },
+    userId,
     config.accessTokenSecret,
-    { expiresIn: config.accessTokenExpiry as jwt.SignOptions["expiresIn"] }
+    { expiresIn: "15m"}
   );
 
   const refreshToken = jwt.sign(
-    { id: payload.id, email: payload.email },
+    userId,
     config.refreshTokenSecret,
-    { expiresIn: config.refreshTokenExpiry as jwt.SignOptions["expiresIn"] }
+    { expiresIn: "7d"}
   );
 
   return { accessToken, refreshToken };
@@ -90,7 +90,7 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
 
     const userId = result.insertedId.toString();
 
-    const { accessToken, refreshToken } = generateTokens({ id: userId, email: email.toLowerCase() });
+    const { accessToken, refreshToken } = generateTokens(userId);
 
     setAuthCookies(res, accessToken, refreshToken);
 
@@ -134,7 +134,7 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
 
     const userId = user._id.toString();
 
-    const { accessToken, refreshToken } = generateTokens({ id: userId, email: user.email });
+    const { accessToken, refreshToken } = generateTokens(userId);
 
     setAuthCookies(res, accessToken, refreshToken);
 
@@ -165,9 +165,9 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
     const usersCollection = db.collection(config.usersCollection);
 
     // Verify the refresh token
-    let decoded: JwtPayload;
+    let decoded: string;
     try {
-      decoded = jwt.verify(refreshTokenCookie, config.refreshTokenSecret) as JwtPayload;
+      decoded = jwt.verify(refreshTokenCookie, config.refreshTokenSecret) as string;
     } catch {
       res.status(403).json({ error: "Forbidden", message: "Invalid or expired refresh token" });
       return;
@@ -175,7 +175,7 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
 
     // Check the user still exists
     const user = await usersCollection.findOne(
-      { _id: new ObjectId(decoded.id) },
+      { _id: new ObjectId(decoded) },
       { projection: { _id: 1, email: 1, name: 1 } }
     );
     if (!user) {
@@ -184,7 +184,7 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
     }
 
     const userId = user._id.toString();
-    const { accessToken, refreshToken } = generateTokens({ id: userId, email: user.email });
+    const { accessToken, refreshToken } = generateTokens(userId);
 
     setAuthCookies(res, accessToken, refreshToken);
 
@@ -221,10 +221,10 @@ router.get("/me", authenticateToken, async (req: Request, res: Response): Promis
     const db = mongoclient.db(config.dbName);
     const usersCollection = db.collection(config.usersCollection);
 
-    const authReq = req as AuthRequest;
+    const userId = req.user;
 
     const user = await usersCollection.findOne(
-      { _id: new ObjectId(authReq.user.id) },
+      { _id: new ObjectId(userId) },
       { projection: { password: 0 } }
     );
 

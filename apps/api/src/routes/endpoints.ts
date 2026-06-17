@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import { ObjectId } from "mongodb";
 import Handlebars from "handlebars";
 import mongoclient from "../dbclient";
-import { authenticateToken, AuthRequest } from "../middleware/auth";
+import { authenticateToken } from "../middleware/auth";
 import { compileTailwind } from "../services/compile";
 
 const router = Router();
@@ -13,7 +13,6 @@ router.use(authenticateToken);
 // POST /api/endpoints — Create endpoint
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
     const { description, method, endpoint, template, parameters } = req.body;
 
     if (!description || !method || !endpoint) {
@@ -52,7 +51,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     const collection = db.collection("endpoints");
 
     const doc = {
-      userId: authReq.user.id,
+      userId: req.user,
       description,
       method,
       endpoint,
@@ -78,12 +77,11 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 // GET /api/endpoints — List user's endpoints
 router.get("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
     const db = mongoclient.db("agenthooks");
     const collection = db.collection("endpoints");
 
     const endpoints = await collection
-      .find({ userId: authReq.user.id })
+      .find({ userId: req.user })
       .project({ compiledCss: 0 })
       .sort({ createdAt: -1 })
       .toArray();
@@ -103,13 +101,12 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
 // DELETE /api/endpoints/:id — Delete endpoint
 router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
     const db = mongoclient.db("agenthooks");
     const collection = db.collection("endpoints");
 
     const result = await collection.deleteOne({
       _id: new ObjectId(req.params.id as string),
-      userId: authReq.user.id,
+      userId: req.user,
     });
 
     if (result.deletedCount === 0) {
@@ -127,13 +124,12 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
 // POST /api/endpoints/:id/execute — Execute endpoint and render template
 router.post("/:id/execute", async (req: Request, res: Response): Promise<void> => {
   try {
-    const authReq = req as AuthRequest;
     const db = mongoclient.db("agenthooks");
     const collection = db.collection("endpoints");
 
     const endpointDoc = await collection.findOne({
       _id: new ObjectId(req.params.id as string),
-      userId: authReq.user.id,
+      userId: req.user,
     });
 
     if (!endpointDoc) {
