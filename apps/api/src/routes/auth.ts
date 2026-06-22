@@ -40,7 +40,7 @@ function setAuthCookies(res: Response, accessToken: string, refreshToken: string
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: "/api/auth",
+    path: "/",
   });
 }
 
@@ -206,7 +206,7 @@ router.post("/logout", async (req: Request, res: Response): Promise<void> => {
   try {
     // Clear cookies
     res.clearCookie("access_token", { path: "/" });
-    res.clearCookie("refresh_token", { path: "/api/auth" });
+    res.clearCookie("refresh_token", { path: "/" });
 
     res.json({ message: "Logged out successfully" });
   } catch (err) {

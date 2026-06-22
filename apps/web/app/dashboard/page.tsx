@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   getMe,
   logout,
+  refreshToken,
   User,
   listEndpoints,
   createEndpoint,
@@ -38,6 +39,8 @@ export default function DashboardPage() {
   useEffect(() => {
     async function init() {
       try {
+        // Check if the session is still valid by refreshing the access token
+        await refreshToken();
         const data = await getMe();
         setUser(data.user);
         const eps = await listEndpoints();
