@@ -1,5 +1,6 @@
 import { createOllama } from "ollama-ai-provider-v2";
 import { generateText } from "ai";
+import { marked } from "marked";
 import { config } from "../config";
 
 const ollama = createOllama({
@@ -23,7 +24,7 @@ Describe this data in plain, natural language. Be concise and informative. Focus
       model: ollama.chat(config.aiModel),
       prompt,
     });
-    return text;
+    return marked(text);
   } catch (err) {
     console.error("Ollama text generation error:", err);
     return JSON.stringify(data, null, 2);
