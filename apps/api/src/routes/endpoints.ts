@@ -4,6 +4,7 @@ import Handlebars from "handlebars";
 import mongoclient from "../dbclient";
 import { authenticateToken } from "../middleware/auth";
 import { compileTailwind } from "../services/compile";
+import { generateResponseInNaturalLanguage } from "../services/ResponseInNaturalLanguage";
 
 const router = Router();
 
@@ -176,6 +177,9 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
         console.error("Template render error:", err);
         html = "<p>Error rendering template</p>";
       }
+    } else {
+      // No template — use Ollama to describe the data in natural language
+      html = await generateResponseInNaturalLanguage(endpointDoc.description, data);
     }
 
     res.json({ html, css, data });
