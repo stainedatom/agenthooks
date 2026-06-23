@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SessionManager from "../components/SessionManager";
 
 export const metadata: Metadata = {
   title: "Agent Hooks",
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <SessionManager />
         {children}
       </body>
     </html>

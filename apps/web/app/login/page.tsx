@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,7 +25,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      const data = await login(email, password);
+      setUser(data.user);
+      // Notify the auth context to schedule a session check before the access token expires
+      if (data.accessTokenExpiresAt && typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth:session-setup", {
+          detail: { accessTokenExpiresAt: data.accessTokenExpiresAt },
+        }));
+      }
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -81,7 +90,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center mt-5 text-sm text-gray-500">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <a href="/register" className="text-black font-semibold underline">
             Create one
           </a>
