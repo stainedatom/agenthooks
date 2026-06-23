@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "../../lib/api";
-import { useAuth } from "../../lib/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,14 +23,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await login(email, password);
-      setUser(data.user);
-      // Notify the auth context to schedule a session check before the access token expires
-      if (data.accessTokenExpiresAt && typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("auth:session-setup", {
-          detail: { accessTokenExpiresAt: data.accessTokenExpiresAt },
-        }));
-      }
+      await login(email, password);
       router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

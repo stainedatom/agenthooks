@@ -186,6 +186,21 @@ export async function createEndpoint(data: {
   });
 }
 
+export async function updateEndpoint(
+  id: string,
+  data: {
+    description: string;
+    method: string;
+    endpoint: string;
+    template?: string;
+  }
+): Promise<Endpoint> {
+  return request<Endpoint>(`/api/endpoints/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function deleteEndpoint(id: string): Promise<void> {
   await request<{ message: string }>(`/api/endpoints/${id}`, {
     method: "DELETE",

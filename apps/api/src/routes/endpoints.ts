@@ -122,6 +122,85 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// PUT /api/endpoints/:id — Update endpoint
+router.put("/:id", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { description, method, endpoint, template, parameters } = req.body;
+
+    if (!description || !method || !endpoint) {
+      res.status(400).json({ error: "BadRequest", message: "description, method, and endpoint are required" });
+      return;
+    }
+
+    if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      res.status(400).json({ error: "BadRequest", message: "Invalid HTTP method" });
+      return;
+    }
+
+    const db = mongoclient.db("agenthooks");
+    const collection = db.collection("endpoints");
+
+    const endpointId = new ObjectId(req.params.id as string);
+    const existingDoc = await collection.findOne({
+      _id: endpointId,
+      userId: req.user,
+    });
+
+    if (!existingDoc) {
+      res.status(404).json({ error: "NotFound", message: "Endpoint not found" });
+      return;
+    }
+
+    // Validate Handlebars template if provided
+    if (template) {
+      try {
+        Handlebars.compile(template);
+      } catch {
+        res.status(400).json({ error: "BadRequest", message: "Invalid Handlebars template" });
+        return;
+      }
+    }
+
+    // Recompile Tailwind CSS if the template has changed
+    let compiledCss = existingDoc.compiledCss || "";
+    if (template && template !== existingDoc.template) {
+      try {
+        compiledCss = await compileTailwind(template);
+      } catch (err) {
+        console.error("Tailwind compilation error:", err);
+        res.status(400).json({ error: "BadRequest", message: "Failed to compile Tailwind CSS in template" });
+        return;
+      }
+    } else if (!template) {
+      compiledCss = "";
+    }
+
+    const updatedDoc = {
+      description,
+      method,
+      endpoint,
+      template: template || "",
+      compiledCss,
+      parameters: parameters || {},
+      updatedAt: new Date(),
+    };
+
+    await collection.updateOne(
+      { _id: endpointId, userId: req.user },
+      { $set: updatedDoc }
+    );
+
+    res.json({
+      _id: req.params.id,
+      userId: req.user,
+      ...updatedDoc,
+    });
+  } catch (err) {
+    console.error("Update endpoint error:", err);
+    res.status(500).json({ error: "InternalServerError", message: "Something went wrong" });
+  }
+});
+
 // POST /api/endpoints/:id/execute — Execute endpoint and render template
 router.post("/:id/execute", async (req: Request, res: Response): Promise<void> => {
   try {

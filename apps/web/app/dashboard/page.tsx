@@ -5,18 +5,21 @@ import { useRouter } from "next/navigation";
 import {
   listEndpoints,
   createEndpoint,
+  updateEndpoint,
   deleteEndpoint,
   executeEndpoint,
   Endpoint,
   ExecuteResult,
+  getMe,
+  logout,
+  User,
 } from "../../lib/api";
-import { useAuth } from "../../lib/auth-context";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: authLoading, logout: authLogout } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
-  const [endpointsLoading, setEndpointsLoading] = useState(true);
   const [error, setError] = useState("");
 
   // Create modal
@@ -27,6 +30,15 @@ export default function DashboardPage() {
   const [newTemplate, setNewTemplate] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Edit modal
+  const [showEdit, setShowEdit] = useState(false);
+  const [editId, setEditId] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editMethod, setEditMethod] = useState("GET");
+  const [editEndpoint, setEditEndpoint] = useState("");
+  const [editTemplate, setEditTemplate] = useState("");
+  const [updating, setUpdating] = useState(false);
+
   // Execute modal
   const [execEndpoint, setExecEndpoint] = useState<Endpoint | null>(null);
   const [execResult, setExecResult] = useState<ExecuteResult | null>(null);
@@ -36,24 +48,23 @@ export default function DashboardPage() {
   useEffect(() => {
     async function init() {
       try {
+        const userData = await getMe();
+        setUser(userData.user);
         const eps = await listEndpoints();
         setEndpoints(eps);
       } catch {
         router.push("/login");
       } finally {
-        setEndpointsLoading(false);
+        setLoading(false);
       }
     }
-    if (!authLoading && user) {
-      init();
-    } else if (!authLoading && !user) {
-      router.push("/login");
-    }
-  }, [user, authLoading, router]);
+    init();
+  }, [router]);
 
   async function handleLogout() {
     try {
-      await authLogout();
+      await logout();
+      router.push("/login");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     }
@@ -83,6 +94,32 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editId) return;
+    setUpdating(true);
+    setError("");
+    try {
+      const updated = await updateEndpoint(editId, {
+        description: editDescription,
+        method: editMethod,
+        endpoint: editEndpoint,
+        template: editTemplate || undefined,
+      });
+      setEndpoints(endpoints.map((ep) => (ep._id === editId ? updated : ep)));
+      setShowEdit(false);
+      setEditId("");
+      setEditDescription("");
+      setEditMethod("GET");
+      setEditEndpoint("");
+      setEditTemplate("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update endpoint");
+    } finally {
+      setUpdating(false);
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("Delete this endpoint?")) return;
     try {
@@ -108,7 +145,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (authLoading || endpointsLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <p className="text-gray-500">Loading...</p>
@@ -202,6 +239,19 @@ export default function DashboardPage() {
                     Run
                   </button>
                   <button
+                    onClick={() => {
+                      setEditId(ep._id);
+                      setEditDescription(ep.description);
+                      setEditMethod(ep.method);
+                      setEditEndpoint(ep.endpoint);
+                      setEditTemplate(ep.template || "");
+                      setShowEdit(true);
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
                     onClick={() => handleDelete(ep._id)}
                     className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
                   >
@@ -289,6 +339,88 @@ export default function DashboardPage() {
                   className="flex-1 py-2.5 bg-black text-white rounded-lg text-sm font-medium cursor-pointer disabled:opacity-50 hover:bg-gray-800 transition-colors"
                 >
                   {creating ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEdit && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-5">
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-1">Edit Endpoint</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Update your external API connection and UI template
+            </p>
+
+            <form onSubmit={handleUpdate} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium">Description</label>
+                <input
+                  type="text"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors"
+                  placeholder="Displays weather data"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium">Method</label>
+                <select
+                  value={editMethod}
+                  onChange={(e) => setEditMethod(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors bg-white"
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="PATCH">PATCH</option>
+                  <option value="DELETE">DELETE</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium">Endpoint URL</label>
+                <input
+                  type="url"
+                  value={editEndpoint}
+                  onChange={(e) => setEditEndpoint(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors font-mono"
+                  placeholder="https://api.example.com/data"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium">
+                  Template <span className="text-gray-400 font-normal">(Handlebars + Tailwind)</span>
+                </label>
+                <textarea
+                  value={editTemplate}
+                  onChange={(e) => setEditTemplate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-400 transition-colors font-mono min-h-[120px]"
+                  placeholder={'<div class="bg-white rounded-xl p-6 shadow-sm">\n  <h2 class="text-xl font-bold">{{title}}</h2>\n  <p class="text-gray-600">{{description}}</p>\n</div>'}
+                />
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEdit(false)}
+                  className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="flex-1 py-2.5 bg-black text-white rounded-lg text-sm font-medium cursor-pointer disabled:opacity-50 hover:bg-gray-800 transition-colors"
+                >
+                  {updating ? "Saving..." : "Save"}
                 </button>
               </div>
             </form>
