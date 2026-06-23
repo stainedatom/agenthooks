@@ -3,10 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getMe,
-  logout,
-  refreshToken,
-  User,
   listEndpoints,
   createEndpoint,
   deleteEndpoint,
@@ -14,12 +10,13 @@ import {
   Endpoint,
   ExecuteResult,
 } from "../../lib/api";
+import { useAuth } from "../../lib/auth-context";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading, logout: authLogout } = useAuth();
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
+  const [endpointsLoading, setEndpointsLoading] = useState(true);
   const [error, setError] = useState("");
 
   // Create modal
@@ -39,25 +36,24 @@ export default function DashboardPage() {
   useEffect(() => {
     async function init() {
       try {
-        // Check if the session is still valid by refreshing the access token
-        await refreshToken();
-        const data = await getMe();
-        setUser(data.user);
         const eps = await listEndpoints();
         setEndpoints(eps);
       } catch {
         router.push("/login");
       } finally {
-        setLoading(false);
+        setEndpointsLoading(false);
       }
     }
-    init();
-  }, [router]);
+    if (!authLoading && user) {
+      init();
+    } else if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, authLoading, router]);
 
   async function handleLogout() {
     try {
-      await logout();
-      router.push("/");
+      await authLogout();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     }
@@ -112,7 +108,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading) {
+  if (authLoading || endpointsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <p className="text-gray-500">Loading...</p>

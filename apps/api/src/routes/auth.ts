@@ -8,18 +8,40 @@ import { authenticateToken } from "../middleware/auth";
 
 const router = Router();
 
+// Helper: parse string expiry (e.g. "5s", "15m", "7d") to milliseconds
+function parseExpiryToMs(expiry: string): number {
+  const match = expiry.match(/^(\d+)([smhd])$/);
+  if (!match) {
+    throw new Error(`Invalid expiry format: ${expiry}`);
+  }
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  switch (unit) {
+    case "s":
+      return value * 1000;
+    case "m":
+      return value * 60 * 1000;
+    case "h":
+      return value * 60 * 60 * 1000;
+    case "d":
+      return value * 24 * 60 * 60 * 1000;
+    default:
+      return 0;
+  }
+}
+
 // Helper: generate tokens
 function generateTokens(userId: string) {
   const accessToken = jwt.sign(
     { user: userId },
     config.accessTokenSecret,
-    { expiresIn: "15m"}
+    { expiresIn: config.accessTokenExpiry as any }
   );
 
   const refreshToken = jwt.sign(
     { user: userId },
     config.refreshTokenSecret,
-    { expiresIn: "7d"}
+    { expiresIn: config.refreshTokenExpiry as any }
   );
 
   return { accessToken, refreshToken };
@@ -31,7 +53,7 @@ function setAuthCookies(res: Response, accessToken: string, refreshToken: string
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 15 * 60 * 1000, // 15 minutes
+    maxAge: parseExpiryToMs(config.accessTokenExpiry),
     path: "/",
   });
 
@@ -39,7 +61,7 @@ function setAuthCookies(res: Response, accessToken: string, refreshToken: string
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: parseExpiryToMs(config.refreshTokenExpiry),
     path: "/",
   });
 }
@@ -100,6 +122,7 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         name,
         email: email.toLowerCase(),
       },
+      refreshTokenExpiresIn: parseExpiryToMs(config.refreshTokenExpiry),
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -144,6 +167,7 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
         name: user.name,
         email: user.email,
       },
+      refreshTokenExpiresIn: parseExpiryToMs(config.refreshTokenExpiry),
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -194,6 +218,7 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
         name: user.name,
         email: user.email,
       },
+      refreshTokenExpiresIn: parseExpiryToMs(config.refreshTokenExpiry),
     });
   } catch (err) {
     console.error("Refresh error:", err);

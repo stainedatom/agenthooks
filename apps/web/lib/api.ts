@@ -12,11 +12,29 @@ export interface ApiError {
 
 interface AuthResponse {
   user: User;
+  refreshTokenExpiresIn?: number;
   message?: string;
 }
 
 // If NEXT_PUBLIC_API_URL is set, use it as base; otherwise fall back to relative URLs (Next.js rewrites)
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+
+export async function forceLogout(): Promise<void> {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("refresh_token_expires_at");
+  }
+  try {
+    await fetch(`${BASE_URL}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // Ignore error
+  }
+  if (typeof window !== "undefined") {
+    window.location.href = "/login";
+  }
+}
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${url}`, {
@@ -30,31 +48,63 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const data = await res.json();
 
   if (!res.ok) {
-    // If the access token expired, attempt a silent refresh and retry once
-    if (res.status === 401 && (data as ApiError).error === "TokenExpired") {
-      const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
+    const isAuthError = res.status === 401 || res.status === 403;
+    const isRefreshRequest = url.includes("/api/auth/refresh");
 
-      if (refreshRes.ok) {
-        // Retry the original request with the new access token
-        const retryRes = await fetch(`${BASE_URL}${url}`, {
+    if (isAuthError && !isRefreshRequest) {
+      try {
+        const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+          method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          ...options,
         });
 
-        if (retryRes.ok) {
-          return retryRes.json() as Promise<T>;
-        }
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          if (refreshData && typeof refreshData === "object" && "refreshTokenExpiresIn" in refreshData) {
+            if (typeof window !== "undefined") {
+              const expiresAt = Date.now() + (refreshData.refreshTokenExpiresIn as number);
+              localStorage.setItem("refresh_token_expires_at", expiresAt.toString());
+            }
+          }
 
-        const retryData = await retryRes.json();
-        throw new Error((retryData as ApiError).message || "Something went wrong");
+          // Retry the original request
+          const retryRes = await fetch(`${BASE_URL}${url}`, {
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            ...options,
+          });
+
+          if (retryRes.ok) {
+            return retryRes.json() as Promise<T>;
+          }
+
+          const retryData = await retryRes.json();
+          throw new Error((retryData as ApiError).message || "Something went wrong");
+        } else {
+          // Silent refresh failed (expired or invalid refresh token)
+          await forceLogout();
+          throw new Error("Session expired. Logging out.");
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message === "Session expired. Logging out.") {
+          throw err;
+        }
+        await forceLogout();
+        throw new Error("Session expired. Logging out.");
       }
     }
 
     throw new Error((data as ApiError).message || "Something went wrong");
+  }
+
+  // If request succeeded, check if it returned token expiration info
+  if (data && typeof data === "object" && "refreshTokenExpiresIn" in data) {
+    if (typeof window !== "undefined") {
+      const expiresAt = Date.now() + (data.refreshTokenExpiresIn as number);
+      localStorage.setItem("refresh_token_expires_at", expiresAt.toString());
+    }
   }
 
   return data as T;
@@ -88,6 +138,9 @@ export async function refreshToken(): Promise<AuthResponse> {
 }
 
 export async function logout(): Promise<void> {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("refresh_token_expires_at");
+  }
   await request<{ message: string }>("/api/auth/logout", {
     method: "POST",
   });
