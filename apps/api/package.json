@@ -18,6 +18,8 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "handlebars": "^4.7.9",
+    "json-logic-js": "^2.0.5",
+    "jsonata": "^2.2.1",
     "jsonwebtoken": "^9.0.3",
     "marked": "^18.0.5",
     "mongodb": "^7.3.0",

@@ -157,9 +157,11 @@ export interface Endpoint {
   userId: string;
   description: string;
   method: string;
-  endpoint: string;
-  template: string;
-  parameters: Record<string, unknown>;
+  endpoint?: string;
+  template?: string;
+  parameters?: Record<string, unknown>;
+  scriptType?: "none" | "javascript" | "jsonata" | "jsonlogic";
+  scriptCode?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -177,8 +179,10 @@ export async function listEndpoints(): Promise<Endpoint[]> {
 export async function createEndpoint(data: {
   description: string;
   method: string;
-  endpoint: string;
+  endpoint?: string;
   template?: string;
+  scriptType?: "none" | "javascript" | "jsonata" | "jsonlogic";
+  scriptCode?: string;
 }): Promise<Endpoint> {
   return request<Endpoint>("/api/endpoints", {
     method: "POST",
@@ -191,8 +195,10 @@ export async function updateEndpoint(
   data: {
     description: string;
     method: string;
-    endpoint: string;
+    endpoint?: string;
     template?: string;
+    scriptType?: "none" | "javascript" | "jsonata" | "jsonlogic";
+    scriptCode?: string;
   }
 ): Promise<Endpoint> {
   return request<Endpoint>(`/api/endpoints/${id}`, {

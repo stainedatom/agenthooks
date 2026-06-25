@@ -1,6 +1,10 @@
 import { Router, Request, Response } from "express";
 import { ObjectId } from "mongodb";
 import Handlebars from "handlebars";
+import vm from "vm";
+import jsonata from "jsonata";
+// @ts-expect-error json-logic-js does not have official types
+import jsonLogic from "json-logic-js";
 import mongoclient from "../dbclient";
 import { authenticateToken } from "../middleware/auth";
 import { compileTailwind } from "../services/compile";
@@ -14,16 +18,43 @@ router.use(authenticateToken);
 // POST /api/endpoints — Create endpoint
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, method, endpoint, template, parameters } = req.body;
+    const { description, method, endpoint, template, parameters, scriptType, scriptCode } = req.body;
 
-    if (!description || !method || !endpoint) {
-      res.status(400).json({ error: "BadRequest", message: "description, method, and endpoint are required" });
+    if (!description || !method) {
+      res.status(400).json({ error: "BadRequest", message: "description and method are required" });
       return;
     }
 
     if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
       res.status(400).json({ error: "BadRequest", message: "Invalid HTTP method" });
       return;
+    }
+
+    const resolvedScriptType = scriptType || "none";
+    const resolvedScriptCode = scriptCode || "";
+
+    if (!["none", "javascript", "jsonata", "jsonlogic"].includes(resolvedScriptType)) {
+      res.status(400).json({ error: "BadRequest", message: "Invalid scriptType" });
+      return;
+    }
+
+    // Validate Script/Logic Code
+    if (resolvedScriptCode && resolvedScriptType !== "none") {
+      try {
+        if (resolvedScriptType === "jsonlogic") {
+          JSON.parse(resolvedScriptCode);
+        } else if (resolvedScriptType === "jsonata") {
+          jsonata(resolvedScriptCode);
+        } else if (resolvedScriptType === "javascript") {
+          new vm.Script(resolvedScriptCode);
+        }
+      } catch (err: any) {
+        res.status(400).json({
+          error: "BadRequest",
+          message: `Invalid script code for type ${resolvedScriptType}: ${err.message}`,
+        });
+        return;
+      }
     }
 
     // Validate Handlebars template if provided
@@ -55,10 +86,12 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       userId: req.user,
       description,
       method,
-      endpoint,
+      endpoint: endpoint || "",
       template: template || "",
       compiledCss,
       parameters: parameters || {},
+      scriptType: resolvedScriptType,
+      scriptCode: resolvedScriptCode,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -125,16 +158,43 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
 // PUT /api/endpoints/:id — Update endpoint
 router.put("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, method, endpoint, template, parameters } = req.body;
+    const { description, method, endpoint, template, parameters, scriptType, scriptCode } = req.body;
 
-    if (!description || !method || !endpoint) {
-      res.status(400).json({ error: "BadRequest", message: "description, method, and endpoint are required" });
+    if (!description || !method) {
+      res.status(400).json({ error: "BadRequest", message: "description and method are required" });
       return;
     }
 
     if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
       res.status(400).json({ error: "BadRequest", message: "Invalid HTTP method" });
       return;
+    }
+
+    const resolvedScriptType = scriptType || "none";
+    const resolvedScriptCode = scriptCode || "";
+
+    if (!["none", "javascript", "jsonata", "jsonlogic"].includes(resolvedScriptType)) {
+      res.status(400).json({ error: "BadRequest", message: "Invalid scriptType" });
+      return;
+    }
+
+    // Validate Script/Logic Code
+    if (resolvedScriptCode && resolvedScriptType !== "none") {
+      try {
+        if (resolvedScriptType === "jsonlogic") {
+          JSON.parse(resolvedScriptCode);
+        } else if (resolvedScriptType === "jsonata") {
+          jsonata(resolvedScriptCode);
+        } else if (resolvedScriptType === "javascript") {
+          new vm.Script(resolvedScriptCode);
+        }
+      } catch (err: any) {
+        res.status(400).json({
+          error: "BadRequest",
+          message: `Invalid script code for type ${resolvedScriptType}: ${err.message}`,
+        });
+        return;
+      }
     }
 
     const db = mongoclient.db("agenthooks");
@@ -178,10 +238,12 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
     const updatedDoc = {
       description,
       method,
-      endpoint,
+      endpoint: endpoint || "",
       template: template || "",
       compiledCss,
       parameters: parameters || {},
+      scriptType: resolvedScriptType,
+      scriptCode: resolvedScriptCode,
       updatedAt: new Date(),
     };
 
@@ -217,39 +279,97 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Execute the external API call
-    const method = endpointDoc.method;
-    let fetchUrl = endpointDoc.endpoint;
-    const fetchOptions: RequestInit = { method };
+    // Determine initial data
+    let data: any = req.body || {};
 
-    if (method === "GET") {
-      const url = new URL(fetchUrl);
-      Object.entries(req.body).forEach(([key, value]) => {
-        url.searchParams.set(key, String(value));
-      });
-      fetchUrl = url.toString();
-    } else if (["POST", "PUT", "PATCH"].includes(method)) {
-      fetchOptions.body = JSON.stringify(req.body);
-      fetchOptions.headers = { "Content-Type": "application/json" };
+    // Save the executed parameters so they are remembered for next time
+    try {
+      await collection.updateOne(
+        { _id: endpointDoc._id },
+        { $set: { parameters: req.body || {}, updatedAt: new Date() } }
+      );
+    } catch (dbErr) {
+      console.error("Failed to save executed parameters to DB:", dbErr);
     }
 
-    const response = await fetch(fetchUrl, fetchOptions);
+    if (endpointDoc.endpoint) {
+      // Execute the external API call
+      const method = endpointDoc.method;
+      let fetchUrl = endpointDoc.endpoint;
+      const fetchOptions: RequestInit = { method };
 
-    if (!response.ok) {
-      res.status(502).json({ error: "BadGateway", message: `External API responded with ${response.status}` });
-      return;
+      if (method === "GET") {
+        try {
+          const url = new URL(fetchUrl);
+          Object.entries(req.body).forEach(([key, value]) => {
+            url.searchParams.set(key, String(value));
+          });
+          fetchUrl = url.toString();
+        } catch {
+          // If not a full URL, it could be relative or invalid, but we proceed with fetch
+        }
+      } else if (["POST", "PUT", "PATCH"].includes(method)) {
+        fetchOptions.body = JSON.stringify(req.body);
+        fetchOptions.headers = { "Content-Type": "application/json" };
+      }
+
+      const response = await fetch(fetchUrl, fetchOptions);
+
+      if (!response.ok) {
+        res.status(502).json({ error: "BadGateway", message: `External API responded with ${response.status}` });
+        return;
+      }
+
+      data = await response.json().catch(() => response.text());
     }
 
-    const data = await response.json().catch(() => response.text());
+    // Apply scripting / logic transformation
+    const scriptType = endpointDoc.scriptType || "none";
+    const scriptCode = endpointDoc.scriptCode || "";
+    let transformedData = data;
 
-    // Render template with the fetched data
+    if (scriptCode && scriptType !== "none") {
+      try {
+        if (scriptType === "jsonata") {
+          const expr = jsonata(scriptCode);
+          transformedData = await expr.evaluate(data);
+        } else if (scriptType === "jsonlogic") {
+          const rule = JSON.parse(scriptCode);
+          transformedData = jsonLogic.apply(rule, data);
+        } else if (scriptType === "javascript") {
+          const sandbox = {
+            input: data,
+            result: undefined as any,
+            console: {
+              log: (...args: any[]) => console.log("[Sandbox Log]:", ...args),
+              error: (...args: any[]) => console.error("[Sandbox Error]:", ...args),
+            },
+          };
+          const context = vm.createContext(sandbox);
+          const wrappedCode = `
+            (function() {
+              ${scriptCode}
+            })()
+          `;
+          const vmScript = new vm.Script(wrappedCode);
+          vmScript.runInContext(context, { timeout: 1000 });
+          transformedData = sandbox.result !== undefined ? sandbox.result : data;
+        }
+      } catch (err: any) {
+        console.error("Script execution error:", err);
+        res.status(400).json({ error: "BadRequest", message: `Failed to execute script: ${err.message}` });
+        return;
+      }
+    }
+
+    // Render template with the fetched/transformed data
     let html = "";
     let css = endpointDoc.compiledCss || "";
 
     if (endpointDoc.template) {
       try {
         const template = Handlebars.compile(endpointDoc.template);
-        const rendered = template(data);
+        const rendered = template(transformedData);
         const hasStyleTag = /<style[\s>/]/i.test(rendered);
         html = hasStyleTag ? rendered : `<style>\n${css}\n</style>\n${rendered}`;
       } catch (err) {
@@ -258,10 +378,32 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
       }
     } else {
       // No template — use Ollama to describe the data in natural language
-      html = await generateResponseInNaturalLanguage(endpointDoc.description, data);
+      html = await generateResponseInNaturalLanguage(endpointDoc.description, transformedData);
     }
 
-    res.json({ html, css, data });
+    // Inject data and resize scripts for secure iframe rendering
+    const jsonString = JSON.stringify(transformedData).replace(/<\/script/gi, '<\\/script');
+    const dataScript = `<script id="agenthooks-data" type="application/json">${jsonString}</script>`;
+    const autoResizeScript = `
+<script>
+  (function() {
+    function sendHeight() {
+      const height = document.documentElement.scrollHeight || document.body.scrollHeight;
+      window.parent.postMessage({ type: 'resize-iframe', height }, '*');
+    }
+    window.addEventListener('load', sendHeight);
+    window.addEventListener('resize', sendHeight);
+    if (window.MutationObserver) {
+      const observer = new MutationObserver(sendHeight);
+      observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+    }
+  })();
+</script>
+`;
+
+    html = `${html}\n${dataScript}\n${autoResizeScript}`;
+
+    res.json({ html, css, data: transformedData });
   } catch (err) {
     console.error("Execute endpoint error:", err);
     res.status(500).json({ error: "InternalServerError", message: "Something went wrong" });
