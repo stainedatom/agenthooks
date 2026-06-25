@@ -48,7 +48,6 @@ export default function DashboardPage() {
   const [execResult, setExecResult] = useState<ExecuteResult | null>(null);
   const [execLoading, setExecLoading] = useState(false);
   const [execError, setExecError] = useState("");
-  const [execParams, setExecParams] = useState("{}");
   const [iframeHeight, setIframeHeight] = useState(300);
 
   useEffect(() => {
@@ -94,7 +93,7 @@ export default function DashboardPage() {
       const ep = await createEndpoint({
         description: newDescription,
         method: newMethod,
-        endpoint: newEndpoint || undefined,
+        endpoint: newEndpoint,
         template: newTemplate || undefined,
         scriptType: newScriptType,
         scriptCode: newScriptType !== "none" ? newScriptCode : undefined,
@@ -123,7 +122,7 @@ export default function DashboardPage() {
       const updated = await updateEndpoint(editId, {
         description: editDescription,
         method: editMethod,
-        endpoint: editEndpoint || undefined,
+        endpoint: editEndpoint,
         template: editTemplate || undefined,
         scriptType: editScriptType,
         scriptCode: editScriptType !== "none" ? editScriptCode : undefined,
@@ -160,54 +159,10 @@ export default function DashboardPage() {
     setExecError("");
     setExecResult(null);
     setIframeHeight(300);
-    const defaultParams = ep.parameters && Object.keys(ep.parameters).length > 0
-      ? JSON.stringify(ep.parameters, null, 2)
-      : "{}";
-    setExecParams(defaultParams);
 
     try {
-      let parsedParams = {};
-      if (defaultParams.trim()) {
-        try {
-          parsedParams = JSON.parse(defaultParams);
-        } catch {
-          // Fallback to empty if default is somehow invalid JSON
-        }
-      }
-      const result = await executeEndpoint(ep._id, parsedParams);
+      const result = await executeEndpoint(ep._id);
       setExecResult(result);
-      setEndpoints((prev) =>
-        prev.map((item) => (item._id === ep._id ? { ...item, parameters: parsedParams } : item))
-      );
-      setExecEndpoint((prev) => (prev && prev._id === ep._id ? { ...prev, parameters: parsedParams } : prev));
-    } catch (err) {
-      setExecError(err instanceof Error ? err.message : "Failed to execute");
-    } finally {
-      setExecLoading(false);
-    }
-  }
-
-  async function triggerExecute() {
-    if (!execEndpoint) return;
-    setExecLoading(true);
-    setExecError("");
-    setExecResult(null);
-    setIframeHeight(300);
-    try {
-      let parsedParams = {};
-      if (execParams.trim()) {
-        try {
-          parsedParams = JSON.parse(execParams);
-        } catch {
-          throw new Error("Parameters must be a valid JSON object");
-        }
-      }
-      const result = await executeEndpoint(execEndpoint._id, parsedParams);
-      setExecResult(result);
-      setEndpoints((prev) =>
-        prev.map((item) => (item._id === execEndpoint._id ? { ...item, parameters: parsedParams } : item))
-      );
-      setExecEndpoint((prev) => (prev ? { ...prev, parameters: parsedParams } : null));
     } catch (err) {
       setExecError(err instanceof Error ? err.message : "Failed to execute");
     } finally {
@@ -375,7 +330,7 @@ export default function DashboardPage() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">
-                  Endpoint URL <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                  Endpoint URL
                 </label>
                 <input
                   type="url"
@@ -383,6 +338,7 @@ export default function DashboardPage() {
                   onChange={(e) => setNewEndpoint(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono"
                   placeholder="https://api.example.com/data"
+                  required
                 />
               </div>
 
@@ -503,7 +459,7 @@ export default function DashboardPage() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-gray-700">
-                  Endpoint URL <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                  Endpoint URL
                 </label>
                 <input
                   type="url"
@@ -511,6 +467,7 @@ export default function DashboardPage() {
                   onChange={(e) => setEditEndpoint(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono"
                   placeholder="https://api.example.com/data"
+                  required
                 />
               </div>
 
@@ -590,7 +547,7 @@ export default function DashboardPage() {
       {/* Run Modal */}
       {execEndpoint && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-5 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-150">
+          <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-150">
             
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/50">
@@ -599,129 +556,74 @@ export default function DashboardPage() {
                   {execEndpoint.method}
                 </span>
                 <h2 className="text-lg font-bold inline-block align-middle">{execEndpoint.description}</h2>
-                {execEndpoint.endpoint ? (
-                  <p className="text-xs text-gray-400 font-mono mt-1">{execEndpoint.endpoint}</p>
-                ) : (
-                  <p className="text-xs text-gray-400 mt-1">Direct Scripting (No External API URL)</p>
-                )}
+                <p className="text-xs text-gray-400 font-mono mt-1">{execEndpoint.endpoint}</p>
               </div>
-              <button
-                onClick={() => { setExecEndpoint(null); setExecResult(null); setExecError(""); }}
-                className="text-gray-400 hover:text-gray-600 cursor-pointer text-2xl leading-none transition-colors"
-              >
-                &times;
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleExecute(execEndpoint)}
+                  disabled={execLoading}
+                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium cursor-pointer transition-colors disabled:opacity-50"
+                >
+                  Refresh
+                </button>
+                <button
+                  onClick={() => { setExecEndpoint(null); setExecResult(null); setExecError(""); }}
+                  className="text-gray-400 hover:text-gray-600 cursor-pointer text-2xl leading-none transition-colors"
+                >
+                  &times;
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-12 gap-6 min-h-0">
-              
-              {/* Left Side: Parameters / Execution Trigger */}
-              <div className="md:col-span-4 flex flex-col gap-4">
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Execution Parameters (JSON)
-                  </label>
-                  <textarea
-                    value={execParams}
-                    onChange={(e) => setExecParams(e.target.value)}
-                    className="px-3 py-2.5 border border-gray-200 bg-gray-55 bg-gray-50 text-gray-900 rounded-xl text-xs font-mono h-48 outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
-                    placeholder={`{
-  "param": "value"
-}`}
-                  />
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 min-h-0 bg-gray-50/30">
+              {execLoading && (
+                <div className="flex-1 flex flex-col items-center justify-center py-20">
+                  <div className="relative w-12 h-12">
+                    <div className="absolute inset-0 border-4 border-gray-100 rounded-full" />
+                    <div className="absolute inset-0 border-4 border-black border-t-transparent rounded-full animate-spin" />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-4 animate-pulse">Fetching API & compiling layout...</p>
                 </div>
-                <button
-                  onClick={triggerExecute}
-                  disabled={execLoading}
-                  className="w-full py-3 bg-black text-white rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50 hover:bg-gray-800 transition-colors shadow-sm flex items-center justify-center gap-2"
-                >
-                  {execLoading ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Running...
-                    </>
-                  ) : (
-                    "Run / Execute"
-                  )}
-                </button>
-              </div>
+              )}
 
-              {/* Right Side: Preview Output */}
-              <div className="md:col-span-8 flex flex-col min-h-[350px] border border-gray-100 rounded-2xl bg-gray-50/30 overflow-hidden">
-                <div className="px-4 py-2 border-b border-gray-100 bg-white flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Output Preview
-                  </span>
-                  {execResult && (
-                    <span className="text-xs text-green-600 font-medium flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                      Rendered Successfully
-                    </span>
-                  )}
+              {execError && (
+                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 py-16 bg-white border border-gray-150 rounded-2xl shadow-sm">
+                  <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-xl font-bold mb-3">
+                    ⚠️
+                  </div>
+                  <p className="text-sm font-semibold text-red-700 mb-1">Execution Failed</p>
+                  <p className="text-xs text-red-600 max-w-md font-mono whitespace-pre-wrap">{execError}</p>
                 </div>
-                
-                <div className="flex-1 p-4 overflow-y-auto flex flex-col justify-start min-h-0">
-                  {execLoading && (
-                    <div className="flex-1 flex flex-col items-center justify-center py-12">
-                      <div className="relative w-12 h-12">
-                        <div className="absolute inset-0 border-4 border-gray-100 rounded-full" />
-                        <div className="absolute inset-0 border-4 border-black border-t-transparent rounded-full animate-spin" />
-                      </div>
-                      <p className="text-sm text-gray-500 mt-4 animate-pulse">Executing script & compiling UI...</p>
-                    </div>
-                  )}
+              )}
 
-                  {execError && (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
-                      <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-xl font-bold mb-3">
-                        ⚠️
-                      </div>
-                      <p className="text-sm font-semibold text-red-700 mb-1">Execution Failed</p>
-                      <p className="text-xs text-red-600 max-w-sm font-mono whitespace-pre-wrap">{execError}</p>
-                    </div>
-                  )}
+              {!execLoading && !execError && execResult && (
+                <div className="flex flex-col gap-4 w-full h-full min-h-0">
+                  {/* Secure Sandboxed Iframe */}
+                  <div className="bg-white border border-gray-150 rounded-xl overflow-hidden shadow-sm min-h-[350px] flex flex-col">
+                    <iframe
+                      srcDoc={execResult.html}
+                      sandbox="allow-scripts"
+                      style={{ height: `${iframeHeight}px` }}
+                      className="w-full border-0 transition-all duration-150 block"
+                      title="Execution Preview"
+                    />
+                  </div>
 
-                  {!execLoading && !execError && !execResult && (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center py-16 text-gray-400">
-                      <span className="text-3xl mb-2">⚙️</span>
-                      <p className="text-sm font-medium">Ready to run</p>
-                      <p className="text-xs max-w-xs mt-1">Configure your parameters on the left and click 'Run' to render the output.</p>
+                  {/* Raw Response Data */}
+                  <details className="text-xs border border-gray-150 bg-white rounded-xl overflow-hidden shadow-sm">
+                    <summary className="cursor-pointer font-semibold px-4 py-3 bg-gray-50 text-gray-700 select-none hover:bg-gray-100 transition-colors flex items-center justify-between">
+                      <span>Raw Transformed Data</span>
+                      <span className="text-xxs text-gray-400 font-normal">Click to expand</span>
+                    </summary>
+                    <div className="border-t border-gray-100">
+                      <pre className="p-4 overflow-x-auto text-xxs text-gray-700 max-h-60 font-mono bg-gray-50/50">
+                        {JSON.stringify(execResult.data, null, 2)}
+                      </pre>
                     </div>
-                  )}
-
-                  {!execLoading && !execError && execResult && (
-                    <div className="flex flex-col gap-4 w-full h-full min-h-0">
-                      {/* Secure Sandboxed Iframe */}
-                      <div className="bg-white border border-gray-150 rounded-xl overflow-hidden shadow-sm min-h-[300px] flex flex-col">
-                        <iframe
-                          srcDoc={execResult.html}
-                          sandbox="allow-scripts"
-                          style={{ height: `${iframeHeight}px` }}
-                          className="w-full border-0 transition-all duration-150 block"
-                          title="Execution Preview"
-                        />
-                      </div>
-
-                      {/* Raw Response Data */}
-                      <details className="text-xs border border-gray-150 bg-white rounded-xl overflow-hidden shadow-sm">
-                        <summary className="cursor-pointer font-semibold px-4 py-3 bg-gray-50 text-gray-700 select-none hover:bg-gray-100 transition-colors flex items-center justify-between">
-                          <span>Raw Transformed Data</span>
-                          <span className="text-xxs text-gray-400 font-normal">Click to expand</span>
-                        </summary>
-                        <div className="border-t border-gray-100">
-                          <pre className="p-4 overflow-x-auto text-xxs text-gray-700 max-h-60 font-mono bg-gray-50/50">
-                            {JSON.stringify(execResult.data, null, 2)}
-                          </pre>
-                        </div>
-                      </details>
-                    </div>
-                  )}
+                  </details>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

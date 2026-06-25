@@ -20,8 +20,8 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
     const { description, method, endpoint, template, parameters, scriptType, scriptCode } = req.body;
 
-    if (!description || !method) {
-      res.status(400).json({ error: "BadRequest", message: "description and method are required" });
+    if (!description || !method || !endpoint) {
+      res.status(400).json({ error: "BadRequest", message: "description, method, and endpoint are required" });
       return;
     }
 
@@ -160,8 +160,8 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const { description, method, endpoint, template, parameters, scriptType, scriptCode } = req.body;
 
-    if (!description || !method) {
-      res.status(400).json({ error: "BadRequest", message: "description and method are required" });
+    if (!description || !method || !endpoint) {
+      res.status(400).json({ error: "BadRequest", message: "description, method, and endpoint are required" });
       return;
     }
 
