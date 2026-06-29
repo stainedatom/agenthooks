@@ -20,12 +20,12 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
     const { description, method, endpoint, template, parameters, scriptType, scriptCode } = req.body;
 
-    if (!description || !method || !endpoint) {
-      res.status(400).json({ error: "BadRequest", message: "description, method, and endpoint are required" });
+    if (!description || !method) {
+      res.status(400).json({ error: "BadRequest", message: "description and method are required" });
       return;
     }
 
-    if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    if (!["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"].includes(method)) {
       res.status(400).json({ error: "BadRequest", message: "Invalid HTTP method" });
       return;
     }
@@ -160,12 +160,12 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
     const { description, method, endpoint, template, parameters, scriptType, scriptCode } = req.body;
 
-    if (!description || !method || !endpoint) {
-      res.status(400).json({ error: "BadRequest", message: "description, method, and endpoint are required" });
+    if (!description || !method) {
+      res.status(400).json({ error: "BadRequest", message: "description and method are required" });
       return;
     }
 
-    if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    if (!["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"].includes(method)) {
       res.status(400).json({ error: "BadRequest", message: "Invalid HTTP method" });
       return;
     }
@@ -279,20 +279,26 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // Determine initial data
-    let data: any = req.body || {};
+    // Determine parameters to use (prefer request body, fall back to saved parameters)
+    const hasBodyParams = req.body && Object.keys(req.body).length > 0;
+    const executionParams = hasBodyParams ? req.body : (endpointDoc.parameters || {});
 
-    // Save the executed parameters so they are remembered for next time
-    try {
-      await collection.updateOne(
-        { _id: endpointDoc._id },
-        { $set: { parameters: req.body || {}, updatedAt: new Date() } }
-      );
-    } catch (dbErr) {
-      console.error("Failed to save executed parameters to DB:", dbErr);
+    // Save the executed parameters so they are remembered for next time (only if new parameters were passed)
+    if (hasBodyParams) {
+      try {
+        await collection.updateOne(
+          { _id: endpointDoc._id },
+          { $set: { parameters: req.body, updatedAt: new Date() } }
+        );
+      } catch (dbErr) {
+        console.error("Failed to save executed parameters to DB:", dbErr);
+      }
     }
 
-    if (endpointDoc.endpoint) {
+    // Determine initial data
+    let data: any = executionParams;
+
+    if (endpointDoc.endpoint && endpointDoc.method !== "NONE") {
       // Execute the external API call
       const method = endpointDoc.method;
       let fetchUrl = endpointDoc.endpoint;
@@ -301,7 +307,7 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
       if (method === "GET") {
         try {
           const url = new URL(fetchUrl);
-          Object.entries(req.body).forEach(([key, value]) => {
+          Object.entries(executionParams).forEach(([key, value]) => {
             url.searchParams.set(key, String(value));
           });
           fetchUrl = url.toString();
@@ -309,14 +315,27 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
           // If not a full URL, it could be relative or invalid, but we proceed with fetch
         }
       } else if (["POST", "PUT", "PATCH"].includes(method)) {
-        fetchOptions.body = JSON.stringify(req.body);
+        fetchOptions.body = JSON.stringify(executionParams);
         fetchOptions.headers = { "Content-Type": "application/json" };
       }
 
-      const response = await fetch(fetchUrl, fetchOptions);
+      let response: globalThis.Response;
+      try {
+        response = await fetch(fetchUrl, fetchOptions);
+      } catch (fetchErr: any) {
+        console.error("External API connection failed:", fetchErr);
+        res.status(502).json({
+          error: "BadGateway",
+          message: `Failed to connect to external API at ${fetchUrl}: ${fetchErr.message}`,
+        });
+        return;
+      }
 
       if (!response.ok) {
-        res.status(502).json({ error: "BadGateway", message: `External API responded with ${response.status}` });
+        res.status(502).json({
+          error: "BadGateway",
+          message: `External API responded with status ${response.status}`,
+        });
         return;
       }
 

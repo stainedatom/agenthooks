@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const [newTemplate, setNewTemplate] = useState("");
   const [newScriptType, setNewScriptType] = useState<"none" | "javascript" | "jsonata" | "jsonlogic">("none");
   const [newScriptCode, setNewScriptCode] = useState("");
+  const [newParameters, setNewParameters] = useState("");
   const [creating, setCreating] = useState(false);
 
   // Edit modal
@@ -41,6 +42,7 @@ export default function DashboardPage() {
   const [editTemplate, setEditTemplate] = useState("");
   const [editScriptType, setEditScriptType] = useState<"none" | "javascript" | "jsonata" | "jsonlogic">("none");
   const [editScriptCode, setEditScriptCode] = useState("");
+  const [editParameters, setEditParameters] = useState("");
   const [updating, setUpdating] = useState(false);
 
   // Execute modal / panel
@@ -89,12 +91,37 @@ export default function DashboardPage() {
     e.preventDefault();
     setCreating(true);
     setError("");
+
+    if (!newDescription.trim()) {
+      setError("Description is required");
+      setCreating(false);
+      return;
+    }
+
+    if (newScriptType !== "none" && !newScriptCode.trim()) {
+      setError("Script code is required for the selected logic type");
+      setCreating(false);
+      return;
+    }
+
+    let parsedParams: Record<string, unknown> | undefined = undefined;
+    if (newParameters.trim()) {
+      try {
+        parsedParams = JSON.parse(newParameters);
+      } catch {
+        setError("Parameters must be a valid JSON object");
+        setCreating(false);
+        return;
+      }
+    }
+
     try {
       const ep = await createEndpoint({
         description: newDescription,
         method: newMethod,
         endpoint: newEndpoint,
         template: newTemplate || undefined,
+        parameters: parsedParams,
         scriptType: newScriptType,
         scriptCode: newScriptType !== "none" ? newScriptCode : undefined,
       });
@@ -106,6 +133,8 @@ export default function DashboardPage() {
       setNewTemplate("");
       setNewScriptType("none");
       setNewScriptCode("");
+      setNewParameters("");
+      setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create endpoint");
     } finally {
@@ -118,12 +147,37 @@ export default function DashboardPage() {
     if (!editId) return;
     setUpdating(true);
     setError("");
+
+    if (!editDescription.trim()) {
+      setError("Description is required");
+      setUpdating(false);
+      return;
+    }
+
+    if (editScriptType !== "none" && !editScriptCode.trim()) {
+      setError("Script code is required for the selected logic type");
+      setUpdating(false);
+      return;
+    }
+
+    let parsedParams: Record<string, unknown> | undefined = undefined;
+    if (editParameters.trim()) {
+      try {
+        parsedParams = JSON.parse(editParameters);
+      } catch {
+        setError("Parameters must be a valid JSON object");
+        setUpdating(false);
+        return;
+      }
+    }
+
     try {
       const updated = await updateEndpoint(editId, {
         description: editDescription,
         method: editMethod,
         endpoint: editEndpoint,
         template: editTemplate || undefined,
+        parameters: parsedParams,
         scriptType: editScriptType,
         scriptCode: editScriptType !== "none" ? editScriptCode : undefined,
       });
@@ -136,6 +190,8 @@ export default function DashboardPage() {
       setEditTemplate("");
       setEditScriptType("none");
       setEditScriptCode("");
+      setEditParameters("");
+      setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update endpoint");
     } finally {
@@ -186,6 +242,7 @@ export default function DashboardPage() {
     PUT: "bg-orange-100 text-orange-800",
     PATCH: "bg-yellow-100 text-yellow-800",
     DELETE: "bg-red-100 text-red-800",
+    NONE: "bg-gray-100 text-gray-700",
   };
 
   return (
@@ -203,7 +260,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={() => { setError(""); setShowCreate(true); }}
             className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
           >
             + New Endpoint
@@ -230,8 +287,8 @@ export default function DashboardPage() {
               Create your first endpoint to start generating UI
             </p>
             <button
-              onClick={() => setShowCreate(true)}
-              className="px-6 py-3 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
+              onClick={() => { setError(""); setShowCreate(true); }}
+              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
             >
               + Create Endpoint
             </button>
@@ -272,6 +329,8 @@ export default function DashboardPage() {
                       setEditTemplate(ep.template || "");
                       setEditScriptType(ep.scriptType || "none");
                       setEditScriptCode(ep.scriptCode || "");
+                      setEditParameters(ep.parameters ? JSON.stringify(ep.parameters, null, 2) : "");
+                      setError("");
                       setShowEdit(true);
                     }}
                     className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
@@ -294,115 +353,186 @@ export default function DashboardPage() {
       {/* Create Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-5 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100">
-            <h2 className="text-lg font-bold mb-1">New Endpoint</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              Define logic and a UI template to build your endpoint
-            </p>
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100 flex flex-col gap-5">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">New Endpoint</h2>
+              <p className="text-xs text-gray-500 mt-1">Configure your API source, optional scripting logic, and UI layout in one place.</p>
+            </div>
 
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Description</label>
-                <input
-                  type="text"
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors"
-                  placeholder="Displays user dashboard summary"
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Method</label>
-                <select
-                  value={newMethod}
-                  onChange={(e) => setNewMethod(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors bg-white cursor-pointer"
-                >
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                  <option value="PUT">PUT</option>
-                  <option value="PATCH">PATCH</option>
-                  <option value="DELETE">DELETE</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">
-                  Endpoint URL
-                </label>
-                <input
-                  type="url"
-                  value={newEndpoint}
-                  onChange={(e) => setNewEndpoint(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono"
-                  placeholder="https://api.example.com/data"
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Logic / Scripting Type</label>
-                <select
-                  value={newScriptType}
-                  onChange={(e) => setNewScriptType(e.target.value as any)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors bg-white cursor-pointer"
-                >
-                  <option value="none">None (Pass-through)</option>
-                  <option value="javascript">JavaScript (ES6)</option>
-                  <option value="jsonata">JSONata Query</option>
-                  <option value="jsonlogic">JSON Logic</option>
-                </select>
-              </div>
-
-              {newScriptType !== "none" && (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-gray-700">Script / Logic Code</label>
-                    <span className="text-xxs text-gray-400 font-medium font-mono uppercase bg-gray-100 px-1.5 py-0.5 rounded">
-                      {newScriptType === "javascript" && "vm syntax"}
-                      {newScriptType === "jsonata" && "jsonata query"}
-                      {newScriptType === "jsonlogic" && "json logic rules"}
-                    </span>
-                  </div>
-                  <textarea
-                    value={newScriptCode}
-                    onChange={(e) => setNewScriptCode(e.target.value)}
-                    className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[120px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
-                    placeholder={
-                      newScriptType === "javascript"
-                        ? "// JavaScript Engine\n// Access input via 'input' object\n// Assign your final output to 'result'\n\nresult = {\n  summary: `Retrieved ${input.title}`,\n  processedAt: new Date().toISOString()\n};"
-                        : newScriptType === "jsonata"
-                        ? "/* JSONata transform expression */\n{\n  \"title\": title,\n  \"items\": [items]\n}"
-                        : "/* JSON Logic syntax rule */\n{\n  \"if\": [\n    { \">\": [{ \"var\": \"temp\" }, 25] },\n    \"Warm\",\n    \"Cool\"\n  ]\n}"
-                    }
-                    required
-                  />
-                  <p className="text-xxs text-gray-400">
-                    {newScriptType === "javascript" && "Write plain ES6. Exposes 'input' global; assign output to 'result' variable."}
-                    {newScriptType === "jsonata" && "A lightweight JSON query/transformation syntax. Transform input JSON to template format."}
-                    {newScriptType === "jsonlogic" && "Safe rule evaluation structure in JSON format. Validates against input JSON."}
-                  </p>
+            <form onSubmit={handleCreate} className="flex flex-col gap-6">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <span className="text-sm">⚠️</span>
+                  <span className="flex-1">{error}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setError("")} 
+                    className="text-red-400 hover:text-red-600 font-bold ml-2 cursor-pointer"
+                  >
+                    &times;
+                  </button>
                 </div>
               )}
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">
-                  Template <span className="text-gray-400 font-normal text-xs">(Handlebars + Tailwind CSS)</span>
-                </label>
-                <textarea
-                  value={newTemplate}
-                  onChange={(e) => setNewTemplate(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono min-h-[120px]"
-                  placeholder={'<div class="bg-white rounded-xl p-6 shadow-sm border border-gray-150">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>'}
-                />
+              {/* Section 1: Data Source */}
+              <div className="flex flex-col gap-4">
+                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🌐 1. Data Source</span>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">Description</label>
+                  <input
+                    type="text"
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors"
+                    placeholder="Displays user dashboard summary"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">HTTP Method</label>
+                  <div className="flex flex-wrap gap-2">
+                    {["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"].map((m) => {
+                      const isActive = newMethod === m;
+                      const activeStyles: Record<string, string> = {
+                        GET: "bg-green-50 text-green-700 border-green-200 shadow-sm font-semibold",
+                        POST: "bg-blue-50 text-blue-700 border-blue-200 shadow-sm font-semibold",
+                        PUT: "bg-orange-50 text-orange-700 border-orange-200 shadow-sm font-semibold",
+                        PATCH: "bg-yellow-50 text-yellow-700 border-yellow-200 shadow-sm font-semibold",
+                        DELETE: "bg-red-50 text-red-700 border-red-200 shadow-sm font-semibold",
+                        NONE: "bg-gray-100 text-gray-700 border-gray-300 shadow-sm font-semibold",
+                      };
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setNewMethod(m)}
+                          className={`px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all duration-150 ${
+                            isActive
+                              ? activeStyles[m]
+                              : "border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {newMethod !== "NONE" && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-gray-700">
+                      Endpoint URL <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={newEndpoint}
+                      onChange={(e) => setNewEndpoint(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono"
+                      placeholder="https://api.example.com/data"
+                    />
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">
+                    {newMethod === "NONE" ? "Mock Input Data" : "Parameters"}{" "}
+                    <span className="text-gray-400 font-normal text-xs">(Optional JSON)</span>
+                  </label>
+                  <textarea
+                    value={newParameters}
+                    onChange={(e) => setNewParameters(e.target.value)}
+                    className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[80px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                    placeholder={
+                      newMethod === "NONE"
+                        ? '{\n  "terms": 7\n}'
+                        : '{\n  "limit": 10,\n  "status": "active"\n}'
+                    }
+                  />
+                  <p className="text-xxs text-gray-400">
+                    {newMethod === "NONE"
+                      ? "Provide the JSON payload that your script will execute on (accessible as the 'input' object)."
+                      : "Provide query or request body parameters in JSON format. These will be automatically sent with the external API call."}
+                  </p>
+                </div>
               </div>
 
-              <div className="flex gap-3 mt-4">
+              <hr className="border-gray-100" />
+
+              {/* Section 2: Data Logic */}
+              <div className="flex flex-col gap-4">
+                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">⚙️ 2. Data Logic</span>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">Logic / Scripting Type</label>
+                  <select
+                    value={newScriptType}
+                    onChange={(e) => setNewScriptType(e.target.value as any)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors bg-white cursor-pointer"
+                  >
+                    <option value="none">None (Pass-through)</option>
+                    <option value="javascript">JavaScript (ES6)</option>
+                    <option value="jsonata">JSONata Query</option>
+                    <option value="jsonlogic">JSON Logic</option>
+                  </select>
+                </div>
+
+                {newScriptType !== "none" && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium text-gray-700">Script / Logic Code</label>
+                      <span className="text-xxs text-gray-400 font-medium font-mono uppercase bg-gray-100 px-1.5 py-0.5 rounded">
+                        {newScriptType === "javascript" && "vm syntax"}
+                        {newScriptType === "jsonata" && "jsonata query"}
+                        {newScriptType === "jsonlogic" && "json logic rules"}
+                      </span>
+                    </div>
+                    <textarea
+                      value={newScriptCode}
+                      onChange={(e) => setNewScriptCode(e.target.value)}
+                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[140px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                      placeholder={
+                        newScriptType === "javascript"
+                          ? "// JavaScript Engine\n// Access input via 'input' object\n// Assign your final output to 'result'\n\nresult = {\n  summary: `Retrieved ${input.title}`,\n  processedAt: new Date().toISOString()\n};"
+                          : newScriptType === "jsonata"
+                          ? "/* JSONata transform expression */\n{\n  \"title\": title,\n  \"items\": [items]\n}"
+                          : "/* JSON Logic syntax rule */\n{\n  \"if\": [\n    { \">\": [{ \"var\": \"temp\" }, 25] },\n    \"Warm\",\n    \"Cool\"\n  ]\n}"
+                      }
+                    />
+                    <p className="text-xxs text-gray-400">
+                      {newScriptType === "javascript" && "Write plain ES6. Exposes 'input' global; assign output to 'result' variable."}
+                      {newScriptType === "jsonata" && "A lightweight JSON query/transformation syntax. Transform input JSON to template format."}
+                      {newScriptType === "jsonlogic" && "Safe rule evaluation structure in JSON format. Validates against input JSON."}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Section 3: UI Template */}
+              <div className="flex flex-col gap-4">
+                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🎨 3. UI Template</span>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">
+                    Template <span className="text-gray-400 font-normal text-xs">(Handlebars + Tailwind CSS)</span>
+                  </label>
+                  <textarea
+                    value={newTemplate}
+                    onChange={(e) => setNewTemplate(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono min-h-[120px]"
+                    placeholder={'<div class="bg-white rounded-xl p-6 shadow-sm border border-gray-150">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>'}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 mt-4 border-t border-gray-100 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowCreate(false)}
+                  onClick={() => { setShowCreate(false); setError(""); }}
                   className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   Cancel
@@ -423,110 +553,168 @@ export default function DashboardPage() {
       {/* Edit Modal */}
       {showEdit && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-5 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100">
-            <h2 className="text-lg font-bold mb-1">Edit Endpoint</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              Update logic parameters and template layouts
-            </p>
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto border border-gray-100 flex flex-col gap-5">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Edit Endpoint</h2>
+              <p className="text-xs text-gray-500 mt-1">Modify your API source, scripting logic, and UI layout in one place.</p>
+            </div>
 
-            <form onSubmit={handleUpdate} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Description</label>
-                <input
-                  type="text"
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors"
-                  placeholder="Displays weather data"
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Method</label>
-                <select
-                  value={editMethod}
-                  onChange={(e) => setEditMethod(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors bg-white cursor-pointer"
-                >
-                  <option value="GET">GET</option>
-                  <option value="POST">POST</option>
-                  <option value="PUT">PUT</option>
-                  <option value="PATCH">PATCH</option>
-                  <option value="DELETE">DELETE</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">
-                  Endpoint URL
-                </label>
-                <input
-                  type="url"
-                  value={editEndpoint}
-                  onChange={(e) => setEditEndpoint(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono"
-                  placeholder="https://api.example.com/data"
-                  required
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Logic / Scripting Type</label>
-                <select
-                  value={editScriptType}
-                  onChange={(e) => setEditScriptType(e.target.value as any)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors bg-white cursor-pointer"
-                >
-                  <option value="none">None (Pass-through)</option>
-                  <option value="javascript">JavaScript (ES6)</option>
-                  <option value="jsonata">JSONata Query</option>
-                  <option value="jsonlogic">JSON Logic</option>
-                </select>
-              </div>
-
-              {editScriptType !== "none" && (
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-gray-700">Script / Logic Code</label>
-                    <span className="text-xxs text-gray-400 font-medium font-mono uppercase bg-gray-100 px-1.5 py-0.5 rounded">
-                      {editScriptType === "javascript" && "vm syntax"}
-                      {editScriptType === "jsonata" && "jsonata query"}
-                      {editScriptType === "jsonlogic" && "json logic rules"}
-                    </span>
-                  </div>
-                  <textarea
-                    value={editScriptCode}
-                    onChange={(e) => setEditScriptCode(e.target.value)}
-                    className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[120px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
-                    placeholder={
-                      editScriptType === "javascript"
-                        ? "// JavaScript Engine\n// Access input via 'input' object\n// Assign your final output to 'result'\n\nresult = {\n  summary: `Retrieved ${input.title}`,\n  processedAt: new Date().toISOString()\n};"
-                        : editScriptType === "jsonata"
-                        ? "/* JSONata transform expression */\n{\n  \"title\": title,\n  \"items\": [items]\n}"
-                        : "/* JSON Logic syntax rule */\n{\n  \"if\": [\n    { \">\": [{ \"var\": \"temp\" }, 25] },\n    \"Warm\",\n    \"Cool\"\n  ]\n}"
-                    }
-                    required
-                  />
+            <form onSubmit={handleUpdate} className="flex flex-col gap-6">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <span className="text-sm">⚠️</span>
+                  <span className="flex-1">{error}</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setError("")} 
+                    className="text-red-400 hover:text-red-600 font-bold ml-2 cursor-pointer"
+                  >
+                    &times;
+                  </button>
                 </div>
               )}
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">
-                  Template <span className="text-gray-400 font-normal text-xs">(Handlebars + Tailwind CSS)</span>
-                </label>
-                <textarea
-                  value={editTemplate}
-                  onChange={(e) => setEditTemplate(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono min-h-[120px]"
-                  placeholder={'<div class="bg-white rounded-xl p-6 shadow-sm border border-gray-150">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>'}
-                />
+              {/* Section 1: Data Source */}
+              <div className="flex flex-col gap-4">
+                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🌐 1. Data Source</span>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">Description</label>
+                  <input
+                    type="text"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors"
+                    placeholder="Displays weather data"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">HTTP Method</label>
+                  <div className="flex flex-wrap gap-2">
+                    {["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"].map((m) => {
+                      const isActive = editMethod === m;
+                      const activeStyles: Record<string, string> = {
+                        GET: "bg-green-50 text-green-700 border-green-200 shadow-sm font-semibold",
+                        POST: "bg-blue-50 text-blue-700 border-blue-200 shadow-sm font-semibold",
+                        PUT: "bg-orange-50 text-orange-700 border-orange-200 shadow-sm font-semibold",
+                        PATCH: "bg-yellow-50 text-yellow-700 border-yellow-200 shadow-sm font-semibold",
+                        DELETE: "bg-red-50 text-red-700 border-red-200 shadow-sm font-semibold",
+                        NONE: "bg-gray-100 text-gray-700 border-gray-300 shadow-sm font-semibold",
+                      };
+                      return (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setEditMethod(m)}
+                          className={`px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all duration-150 ${
+                            isActive
+                              ? activeStyles[m]
+                              : "border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {editMethod !== "NONE" && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-gray-700">
+                      Endpoint URL <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={editEndpoint}
+                      onChange={(e) => setEditEndpoint(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono"
+                      placeholder="https://api.example.com/data"
+                    />
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">
+                    {editMethod === "NONE" ? "Mock Input Data" : "Parameters"}{" "}
+                    <span className="text-gray-400 font-normal text-xs">(Optional JSON)</span>
+                  </label>
+                  <textarea
+                    value={editParameters}
+                    onChange={(e) => setEditParameters(e.target.value)}
+                    className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[80px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                    placeholder={
+                      editMethod === "NONE"
+                        ? '{\n  "terms": 7\n}'
+                        : '{\n  "limit": 10,\n  "status": "active"\n}'
+                    }
+                  />
+                </div>
               </div>
 
-              <div className="flex gap-3 mt-4">
+              <hr className="border-gray-100" />
+
+              {/* Section 2: Data Logic */}
+              <div className="flex flex-col gap-4">
+                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">⚙️ 2. Data Logic</span>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">Logic / Scripting Type</label>
+                  <select
+                    value={editScriptType}
+                    onChange={(e) => setEditScriptType(e.target.value as any)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors bg-white cursor-pointer"
+                  >
+                    <option value="none">None (Pass-through)</option>
+                    <option value="javascript">JavaScript (ES6)</option>
+                    <option value="jsonata">JSONata Query</option>
+                    <option value="jsonlogic">JSON Logic</option>
+                  </select>
+                </div>
+
+                {editScriptType !== "none" && (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium text-gray-700">Script / Logic Code</label>
+                      <span className="text-xxs text-gray-400 font-medium font-mono uppercase bg-gray-100 px-1.5 py-0.5 rounded">
+                        {editScriptType === "javascript" && "vm syntax"}
+                        {editScriptType === "jsonata" && "jsonata query"}
+                        {editScriptType === "jsonlogic" && "json logic rules"}
+                      </span>
+                    </div>
+                    <textarea
+                      value={editScriptCode}
+                      onChange={(e) => setEditScriptCode(e.target.value)}
+                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[140px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Section 3: UI Template */}
+              <div className="flex flex-col gap-4">
+                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🎨 3. UI Template</span>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-gray-700">
+                    Template <span className="text-gray-400 font-normal text-xs">(Handlebars + Tailwind CSS)</span>
+                  </label>
+                  <textarea
+                    value={editTemplate}
+                    onChange={(e) => setEditTemplate(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono min-h-[120px]"
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 mt-4 border-t border-gray-100 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowEdit(false)}
+                  onClick={() => { setShowEdit(false); setError(""); }}
                   className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   Cancel
