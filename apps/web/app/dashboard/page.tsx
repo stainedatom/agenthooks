@@ -27,10 +27,20 @@ export default function DashboardPage() {
   const [newDescription, setNewDescription] = useState("");
   const [newMethod, setNewMethod] = useState("GET");
   const [newEndpoint, setNewEndpoint] = useState("");
-  const [newTemplate, setNewTemplate] = useState("");
-  const [newScriptType, setNewScriptType] = useState<"none" | "javascript" | "jsonata" | "jsonlogic">("none");
-  const [newScriptCode, setNewScriptCode] = useState("");
   const [newParameters, setNewParameters] = useState("");
+
+  const [newEnableJavascript, setNewEnableJavascript] = useState(false);
+  const [newJavascriptCode, setNewJavascriptCode] = useState("");
+
+  const [newEnableJsonata, setNewEnableJsonata] = useState(false);
+  const [newJsonataCode, setNewJsonataCode] = useState("");
+
+  const [newEnableJsonlogic, setNewEnableJsonlogic] = useState(false);
+  const [newJsonlogicCode, setNewJsonlogicCode] = useState("");
+
+  const [newEnableTemplate, setNewEnableTemplate] = useState(false);
+  const [newTemplate, setNewTemplate] = useState("");
+
   const [creating, setCreating] = useState(false);
 
   // Edit modal
@@ -39,10 +49,20 @@ export default function DashboardPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editMethod, setEditMethod] = useState("GET");
   const [editEndpoint, setEditEndpoint] = useState("");
-  const [editTemplate, setEditTemplate] = useState("");
-  const [editScriptType, setEditScriptType] = useState<"none" | "javascript" | "jsonata" | "jsonlogic">("none");
-  const [editScriptCode, setEditScriptCode] = useState("");
   const [editParameters, setEditParameters] = useState("");
+
+  const [editEnableJavascript, setEditEnableJavascript] = useState(false);
+  const [editJavascriptCode, setEditJavascriptCode] = useState("");
+
+  const [editEnableJsonata, setEditEnableJsonata] = useState(false);
+  const [editJsonataCode, setEditJsonataCode] = useState("");
+
+  const [editEnableJsonlogic, setEditEnableJsonlogic] = useState(false);
+  const [editJsonlogicCode, setEditJsonlogicCode] = useState("");
+
+  const [editEnableTemplate, setEditEnableTemplate] = useState(false);
+  const [editTemplate, setEditTemplate] = useState("");
+
   const [updating, setUpdating] = useState(false);
 
   // Execute modal / panel
@@ -98,8 +118,26 @@ export default function DashboardPage() {
       return;
     }
 
-    if (newScriptType !== "none" && !newScriptCode.trim()) {
-      setError("Script code is required for the selected logic type");
+    if (newEnableJsonlogic && !newJsonlogicCode.trim()) {
+      setError("JSON Logic rules code is required when enabled");
+      setCreating(false);
+      return;
+    }
+
+    if (newEnableJsonata && !newJsonataCode.trim()) {
+      setError("JSONata expression is required when enabled");
+      setCreating(false);
+      return;
+    }
+
+    if (newEnableJavascript && !newJavascriptCode.trim()) {
+      setError("JavaScript code is required when enabled");
+      setCreating(false);
+      return;
+    }
+
+    if (newEnableTemplate && !newTemplate.trim()) {
+      setError("UI Template is required when enabled");
       setCreating(false);
       return;
     }
@@ -120,10 +158,11 @@ export default function DashboardPage() {
         description: newDescription,
         method: newMethod,
         endpoint: newEndpoint,
-        template: newTemplate || undefined,
+        template: newEnableTemplate ? newTemplate : "",
         parameters: parsedParams,
-        scriptType: newScriptType,
-        scriptCode: newScriptType !== "none" ? newScriptCode : undefined,
+        javascriptCode: newEnableJavascript ? newJavascriptCode : "",
+        jsonataCode: newEnableJsonata ? newJsonataCode : "",
+        jsonlogicCode: newEnableJsonlogic ? newJsonlogicCode : "",
       });
       setEndpoints([ep, ...endpoints]);
       setShowCreate(false);
@@ -131,8 +170,13 @@ export default function DashboardPage() {
       setNewMethod("GET");
       setNewEndpoint("");
       setNewTemplate("");
-      setNewScriptType("none");
-      setNewScriptCode("");
+      setNewEnableTemplate(false);
+      setNewEnableJavascript(false);
+      setNewJavascriptCode("");
+      setNewEnableJsonata(false);
+      setNewJsonataCode("");
+      setNewEnableJsonlogic(false);
+      setNewJsonlogicCode("");
       setNewParameters("");
       setError("");
     } catch (err) {
@@ -154,8 +198,26 @@ export default function DashboardPage() {
       return;
     }
 
-    if (editScriptType !== "none" && !editScriptCode.trim()) {
-      setError("Script code is required for the selected logic type");
+    if (editEnableJsonlogic && !editJsonlogicCode.trim()) {
+      setError("JSON Logic rules code is required when enabled");
+      setUpdating(false);
+      return;
+    }
+
+    if (editEnableJsonata && !editJsonataCode.trim()) {
+      setError("JSONata expression is required when enabled");
+      setUpdating(false);
+      return;
+    }
+
+    if (editEnableJavascript && !editJavascriptCode.trim()) {
+      setError("JavaScript code is required when enabled");
+      setUpdating(false);
+      return;
+    }
+
+    if (editEnableTemplate && !editTemplate.trim()) {
+      setError("UI Template is required when enabled");
       setUpdating(false);
       return;
     }
@@ -176,10 +238,11 @@ export default function DashboardPage() {
         description: editDescription,
         method: editMethod,
         endpoint: editEndpoint,
-        template: editTemplate || undefined,
+        template: editEnableTemplate ? editTemplate : "",
         parameters: parsedParams,
-        scriptType: editScriptType,
-        scriptCode: editScriptType !== "none" ? editScriptCode : undefined,
+        javascriptCode: editEnableJavascript ? editJavascriptCode : "",
+        jsonataCode: editEnableJsonata ? editJsonataCode : "",
+        jsonlogicCode: editEnableJsonlogic ? editJsonlogicCode : "",
       });
       setEndpoints(endpoints.map((ep) => (ep._id === editId ? updated : ep)));
       setShowEdit(false);
@@ -188,8 +251,13 @@ export default function DashboardPage() {
       setEditMethod("GET");
       setEditEndpoint("");
       setEditTemplate("");
-      setEditScriptType("none");
-      setEditScriptCode("");
+      setEditEnableTemplate(false);
+      setEditEnableJavascript(false);
+      setEditJavascriptCode("");
+      setEditEnableJsonata(false);
+      setEditJsonataCode("");
+      setEditEnableJsonlogic(false);
+      setEditJsonlogicCode("");
       setEditParameters("");
       setError("");
     } catch (err) {
@@ -322,13 +390,28 @@ export default function DashboardPage() {
                   </button>
                   <button
                     onClick={() => {
+                      const jsCode = ep.javascriptCode || (ep.scriptType === "javascript" ? ep.scriptCode : "");
+                      const jataCode = ep.jsonataCode || (ep.scriptType === "jsonata" ? ep.scriptCode : "");
+                      const jlogicCode = ep.jsonlogicCode || (ep.scriptType === "jsonlogic" ? ep.scriptCode : "");
+                      const templ = ep.template || "";
+
                       setEditId(ep._id);
                       setEditDescription(ep.description);
                       setEditMethod(ep.method);
                       setEditEndpoint(ep.endpoint || "");
-                      setEditTemplate(ep.template || "");
-                      setEditScriptType(ep.scriptType || "none");
-                      setEditScriptCode(ep.scriptCode || "");
+                      
+                      setEditJavascriptCode(jsCode || "");
+                      setEditEnableJavascript(!!jsCode);
+                      
+                      setEditJsonataCode(jataCode || "");
+                      setEditEnableJsonata(!!jataCode);
+                      
+                      setEditJsonlogicCode(jlogicCode || "");
+                      setEditEnableJsonlogic(!!jlogicCode);
+
+                      setEditTemplate(templ);
+                      setEditEnableTemplate(!!templ);
+
                       setEditParameters(ep.parameters ? JSON.stringify(ep.parameters, null, 2) : "");
                       setError("");
                       setShowEdit(true);
@@ -460,72 +543,123 @@ export default function DashboardPage() {
 
               <hr className="border-gray-100" />
 
-              {/* Section 2: Data Logic */}
-              <div className="flex flex-col gap-4">
-                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">⚙️ 2. Data Logic</span>
-                
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-gray-700">Logic / Scripting Type</label>
-                  <select
-                    value={newScriptType}
-                    onChange={(e) => setNewScriptType(e.target.value as any)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors bg-white cursor-pointer"
-                  >
-                    <option value="none">None (Pass-through)</option>
-                    <option value="javascript">JavaScript (ES6)</option>
-                    <option value="jsonata">JSONata Query</option>
-                    <option value="jsonlogic">JSON Logic</option>
-                  </select>
-                </div>
-
-                {newScriptType !== "none" && (
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center">
-                      <label className="text-sm font-medium text-gray-700">Script / Logic Code</label>
-                      <span className="text-xxs text-gray-400 font-medium font-mono uppercase bg-gray-100 px-1.5 py-0.5 rounded">
-                        {newScriptType === "javascript" && "vm syntax"}
-                        {newScriptType === "jsonata" && "jsonata query"}
-                        {newScriptType === "jsonlogic" && "json logic rules"}
-                      </span>
-                    </div>
-                    <textarea
-                      value={newScriptCode}
-                      onChange={(e) => setNewScriptCode(e.target.value)}
-                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[140px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
-                      placeholder={
-                        newScriptType === "javascript"
-                          ? "// JavaScript Engine\n// Access input via 'input' object\n// Assign your final output to 'result'\n\nresult = {\n  summary: `Retrieved ${input.title}`,\n  processedAt: new Date().toISOString()\n};"
-                          : newScriptType === "jsonata"
-                          ? "/* JSONata transform expression */\n{\n  \"title\": title,\n  \"items\": [items]\n}"
-                          : "/* JSON Logic syntax rule */\n{\n  \"if\": [\n    { \">\": [{ \"var\": \"temp\" }, 25] },\n    \"Warm\",\n    \"Cool\"\n  ]\n}"
-                      }
+              {/* Section 2: JSONata Query */}
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">⚙️ 2. JSONata Transformation</span>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={newEnableJsonata}
+                      onChange={(e) => setNewEnableJsonata(e.target.checked)}
+                      className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
                     />
-                    <p className="text-xxs text-gray-400">
-                      {newScriptType === "javascript" && "Write plain ES6. Exposes 'input' global; assign output to 'result' variable."}
-                      {newScriptType === "jsonata" && "A lightweight JSON query/transformation syntax. Transform input JSON to template format."}
-                      {newScriptType === "jsonlogic" && "Safe rule evaluation structure in JSON format. Validates against input JSON."}
-                    </p>
+                    Enable JSONata
+                  </label>
+                </div>
+                {newEnableJsonata && (
+                  <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <textarea
+                      value={newJsonataCode}
+                      onChange={(e) => setNewJsonataCode(e.target.value)}
+                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[100px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                      placeholder={`/* JSONata query to transform input JSON */\n{\n  "title": title,\n  "items": [items]\n}`}
+                    />
                   </div>
                 )}
               </div>
 
               <hr className="border-gray-100" />
 
-              {/* Section 3: UI Template */}
-              <div className="flex flex-col gap-4">
-                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🎨 3. UI Template</span>
-                
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-gray-700">
-                    Template <span className="text-gray-400 font-normal text-xs">(Handlebars + Tailwind CSS)</span>
+              {/* Section 3: JSON Logic */}
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🧠 3. JSON Logic Evaluation</span>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={newEnableJsonlogic}
+                      onChange={(e) => setNewEnableJsonlogic(e.target.checked)}
+                      className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                    />
+                    Enable JSON Logic
                   </label>
-                  <textarea
-                    value={newTemplate}
-                    onChange={(e) => setNewTemplate(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono min-h-[120px]"
-                    placeholder={'<div class="bg-white rounded-xl p-6 shadow-sm border border-gray-150">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>'}
-                  />
                 </div>
+                {newEnableJsonlogic && (
+                  <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <textarea
+                      value={newJsonlogicCode}
+                      onChange={(e) => setNewJsonlogicCode(e.target.value)}
+                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[100px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                      placeholder={`/* JSON Logic rule validation or transformation */\n{\n  "if": [\n    { ">": [{ "var": "temp" }, 25] },\n    "Warm",\n    "Cool"\n  ]\n}`}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Section 4: UI Template */}
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🎨 4. UI Template</span>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={newEnableTemplate}
+                      onChange={(e) => setNewEnableTemplate(e.target.checked)}
+                      className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                    />
+                    Enable Template
+                  </label>
+                </div>
+                {newEnableTemplate && (
+                  <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <textarea
+                      value={newTemplate}
+                      onChange={(e) => setNewTemplate(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono min-h-[120px]"
+                      placeholder={`<div class="bg-white rounded-xl p-6 shadow-sm border border-gray-150">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>`}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Section 5: JavaScript */}
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">💻 5. JavaScript (Client)</span>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={newEnableJavascript}
+                      onChange={(e) => setNewEnableJavascript(e.target.checked)}
+                      className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                    />
+                    Enable JavaScript
+                  </label>
+                </div>
+                {newEnableJavascript && (
+                  <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <textarea
+                      value={newJavascriptCode}
+                      onChange={(e) => setNewJavascriptCode(e.target.value)}
+                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[120px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                      placeholder={`// Client-side script. Executes directly in the browser iframe.
+// Exposes 'data' / 'input' as local variables containing the API response.
+let count = 0;
+const btn = document.getElementById('counterBtn');
+if (btn) {
+  btn.addEventListener('click', () => {
+    count++;
+    btn.textContent = \`Clicked \${count} times\`;
+  });
+}`}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Modal Footer */}
@@ -655,38 +789,27 @@ export default function DashboardPage() {
 
               <hr className="border-gray-100" />
 
-              {/* Section 2: Data Logic */}
-              <div className="flex flex-col gap-4">
-                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">⚙️ 2. Data Logic</span>
-                
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-gray-700">Logic / Scripting Type</label>
-                  <select
-                    value={editScriptType}
-                    onChange={(e) => setEditScriptType(e.target.value as any)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors bg-white cursor-pointer"
-                  >
-                    <option value="none">None (Pass-through)</option>
-                    <option value="javascript">JavaScript (ES6)</option>
-                    <option value="jsonata">JSONata Query</option>
-                    <option value="jsonlogic">JSON Logic</option>
-                  </select>
+              {/* Section 2: JSONata Query */}
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">⚙️ 2. JSONata Transformation</span>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={editEnableJsonata}
+                      onChange={(e) => setEditEnableJsonata(e.target.checked)}
+                      className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                    />
+                    Enable JSONata
+                  </label>
                 </div>
-
-                {editScriptType !== "none" && (
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center">
-                      <label className="text-sm font-medium text-gray-700">Script / Logic Code</label>
-                      <span className="text-xxs text-gray-400 font-medium font-mono uppercase bg-gray-100 px-1.5 py-0.5 rounded">
-                        {editScriptType === "javascript" && "vm syntax"}
-                        {editScriptType === "jsonata" && "jsonata query"}
-                        {editScriptType === "jsonlogic" && "json logic rules"}
-                      </span>
-                    </div>
+                {editEnableJsonata && (
+                  <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
                     <textarea
-                      value={editScriptCode}
-                      onChange={(e) => setEditScriptCode(e.target.value)}
-                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[140px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                      value={editJsonataCode}
+                      onChange={(e) => setEditJsonataCode(e.target.value)}
+                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[100px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                      placeholder={`/* JSONata query to transform input JSON */\n{\n  "title": title,\n  "items": [items]\n}`}
                     />
                   </div>
                 )}
@@ -694,20 +817,95 @@ export default function DashboardPage() {
 
               <hr className="border-gray-100" />
 
-              {/* Section 3: UI Template */}
-              <div className="flex flex-col gap-4">
-                <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🎨 3. UI Template</span>
-                
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-gray-700">
-                    Template <span className="text-gray-400 font-normal text-xs">(Handlebars + Tailwind CSS)</span>
+              {/* Section 3: JSON Logic */}
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🧠 3. JSON Logic Evaluation</span>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={editEnableJsonlogic}
+                      onChange={(e) => setEditEnableJsonlogic(e.target.checked)}
+                      className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                    />
+                    Enable JSON Logic
                   </label>
-                  <textarea
-                    value={editTemplate}
-                    onChange={(e) => setEditTemplate(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono min-h-[120px]"
-                  />
                 </div>
+                {editEnableJsonlogic && (
+                  <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <textarea
+                      value={editJsonlogicCode}
+                      onChange={(e) => setEditJsonlogicCode(e.target.value)}
+                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[100px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                      placeholder={`/* JSON Logic rule validation or transformation */\n{\n  "if": [\n    { ">": [{ "var": "temp" }, 25] },\n    "Warm",\n    "Cool"\n  ]\n}`}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Section 4: UI Template */}
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">🎨 4. UI Template</span>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={editEnableTemplate}
+                      onChange={(e) => setEditEnableTemplate(e.target.checked)}
+                      className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                    />
+                    Enable Template
+                  </label>
+                </div>
+                {editEnableTemplate && (
+                  <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <textarea
+                      value={editTemplate}
+                      onChange={(e) => setEditTemplate(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 transition-colors font-mono min-h-[120px]"
+                      placeholder={`<div class="bg-white rounded-xl p-6 shadow-sm border border-gray-150">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>`}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-gray-100" />
+
+              {/* Section 5: JavaScript */}
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">💻 5. JavaScript</span>
+                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+                    <input
+                      type="checkbox"
+                      checked={editEnableJavascript}
+                      onChange={(e) => setEditEnableJavascript(e.target.checked)}
+                      className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                    />
+                    Enable JavaScript
+                  </label>
+                </div>
+                {editEnableJavascript && (
+                  <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <textarea
+                      value={editJavascriptCode}
+                      onChange={(e) => setEditJavascriptCode(e.target.value)}
+                      className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[120px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner"
+                      placeholder={`// Client-side script. Executes directly in the browser iframe.
+// Exposes 'data' / 'input' as local variables containing the API response.
+let count = 0;
+const btn = document.getElementById('counterBtn');
+if (btn) {
+  btn.addEventListener('click', () => {
+    count++;
+    btn.textContent = \`Clicked \${count} times\`;
+  });
+}`}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Modal Footer */}
@@ -791,7 +989,7 @@ export default function DashboardPage() {
                   <div className="bg-white border border-gray-150 rounded-xl overflow-hidden shadow-sm min-h-[350px] flex flex-col">
                     <iframe
                       srcDoc={execResult.html}
-                      sandbox="allow-scripts"
+                      sandbox="allow-scripts allow-forms"
                       style={{ height: `${iframeHeight}px` }}
                       className="w-full border-0 transition-all duration-150 block"
                       title="Execution Preview"

@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express";
 import { ObjectId } from "mongodb";
 import Handlebars from "handlebars";
-import vm from "vm";
 import jsonata from "jsonata";
 // @ts-expect-error json-logic-js does not have official types
 import jsonLogic from "json-logic-js";
@@ -18,7 +17,18 @@ router.use(authenticateToken);
 // POST /api/endpoints — Create endpoint
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, method, endpoint, template, parameters, scriptType, scriptCode } = req.body;
+    const {
+      description,
+      method,
+      endpoint,
+      template,
+      parameters,
+      scriptType,
+      scriptCode,
+      javascriptCode,
+      jsonataCode,
+      jsonlogicCode,
+    } = req.body;
 
     if (!description || !method) {
       res.status(400).json({ error: "BadRequest", message: "description and method are required" });
@@ -30,28 +40,70 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const resolvedScriptType = scriptType || "none";
-    const resolvedScriptCode = scriptCode || "";
+    // Pipeline fields
+    let resolvedJavascriptCode = javascriptCode || "";
+    let resolvedJsonataCode = jsonataCode || "";
+    let resolvedJsonlogicCode = jsonlogicCode || "";
 
-    if (!["none", "javascript", "jsonata", "jsonlogic"].includes(resolvedScriptType)) {
-      res.status(400).json({ error: "BadRequest", message: "Invalid scriptType" });
-      return;
+    // Backwards compatibility fallback:
+    if (scriptType && scriptType !== "none" && scriptCode) {
+      if (scriptType === "javascript" && !resolvedJavascriptCode) {
+        resolvedJavascriptCode = scriptCode;
+      } else if (scriptType === "jsonata" && !resolvedJsonataCode) {
+        resolvedJsonataCode = scriptCode;
+      } else if (scriptType === "jsonlogic" && !resolvedJsonlogicCode) {
+        resolvedJsonlogicCode = scriptCode;
+      }
     }
 
-    // Validate Script/Logic Code
-    if (resolvedScriptCode && resolvedScriptType !== "none") {
+    // Determine compatible scriptType/scriptCode for older clients
+    let resolvedScriptType = "none";
+    let resolvedScriptCode = "";
+    if (resolvedJavascriptCode) {
+      resolvedScriptType = "javascript";
+      resolvedScriptCode = resolvedJavascriptCode;
+    } else if (resolvedJsonataCode) {
+      resolvedScriptType = "jsonata";
+      resolvedScriptCode = resolvedJsonataCode;
+    } else if (resolvedJsonlogicCode) {
+      resolvedScriptType = "jsonlogic";
+      resolvedScriptCode = resolvedJsonlogicCode;
+    }
+
+    // Validate Javascript
+    if (resolvedJavascriptCode) {
       try {
-        if (resolvedScriptType === "jsonlogic") {
-          JSON.parse(resolvedScriptCode);
-        } else if (resolvedScriptType === "jsonata") {
-          jsonata(resolvedScriptCode);
-        } else if (resolvedScriptType === "javascript") {
-          new vm.Script(resolvedScriptCode);
-        }
+        new Function(resolvedJavascriptCode);
       } catch (err: any) {
         res.status(400).json({
           error: "BadRequest",
-          message: `Invalid script code for type ${resolvedScriptType}: ${err.message}`,
+          message: `Invalid JavaScript syntax: ${err.message}`,
+        });
+        return;
+      }
+    }
+
+    // Validate JSONata
+    if (resolvedJsonataCode) {
+      try {
+        jsonata(resolvedJsonataCode);
+      } catch (err: any) {
+        res.status(400).json({
+          error: "BadRequest",
+          message: `Invalid JSONata expression: ${err.message}`,
+        });
+        return;
+      }
+    }
+
+    // Validate JSON Logic
+    if (resolvedJsonlogicCode) {
+      try {
+        JSON.parse(resolvedJsonlogicCode);
+      } catch (err: any) {
+        res.status(400).json({
+          error: "BadRequest",
+          message: `Invalid JSON Logic rules: ${err.message}`,
         });
         return;
       }
@@ -90,6 +142,9 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       template: template || "",
       compiledCss,
       parameters: parameters || {},
+      javascriptCode: resolvedJavascriptCode,
+      jsonataCode: resolvedJsonataCode,
+      jsonlogicCode: resolvedJsonlogicCode,
       scriptType: resolvedScriptType,
       scriptCode: resolvedScriptCode,
       createdAt: new Date(),
@@ -158,7 +213,18 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
 // PUT /api/endpoints/:id — Update endpoint
 router.put("/:id", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, method, endpoint, template, parameters, scriptType, scriptCode } = req.body;
+    const {
+      description,
+      method,
+      endpoint,
+      template,
+      parameters,
+      scriptType,
+      scriptCode,
+      javascriptCode,
+      jsonataCode,
+      jsonlogicCode,
+    } = req.body;
 
     if (!description || !method) {
       res.status(400).json({ error: "BadRequest", message: "description and method are required" });
@@ -170,28 +236,70 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const resolvedScriptType = scriptType || "none";
-    const resolvedScriptCode = scriptCode || "";
+    // Pipeline fields
+    let resolvedJavascriptCode = javascriptCode || "";
+    let resolvedJsonataCode = jsonataCode || "";
+    let resolvedJsonlogicCode = jsonlogicCode || "";
 
-    if (!["none", "javascript", "jsonata", "jsonlogic"].includes(resolvedScriptType)) {
-      res.status(400).json({ error: "BadRequest", message: "Invalid scriptType" });
-      return;
+    // Backwards compatibility fallback:
+    if (scriptType && scriptType !== "none" && scriptCode) {
+      if (scriptType === "javascript" && !resolvedJavascriptCode) {
+        resolvedJavascriptCode = scriptCode;
+      } else if (scriptType === "jsonata" && !resolvedJsonataCode) {
+        resolvedJsonataCode = scriptCode;
+      } else if (scriptType === "jsonlogic" && !resolvedJsonlogicCode) {
+        resolvedJsonlogicCode = scriptCode;
+      }
     }
 
-    // Validate Script/Logic Code
-    if (resolvedScriptCode && resolvedScriptType !== "none") {
+    // Determine compatible scriptType/scriptCode for older clients
+    let resolvedScriptType = "none";
+    let resolvedScriptCode = "";
+    if (resolvedJavascriptCode) {
+      resolvedScriptType = "javascript";
+      resolvedScriptCode = resolvedJavascriptCode;
+    } else if (resolvedJsonataCode) {
+      resolvedScriptType = "jsonata";
+      resolvedScriptCode = resolvedJsonataCode;
+    } else if (resolvedJsonlogicCode) {
+      resolvedScriptType = "jsonlogic";
+      resolvedScriptCode = resolvedJsonlogicCode;
+    }
+
+    // Validate Javascript
+    if (resolvedJavascriptCode) {
       try {
-        if (resolvedScriptType === "jsonlogic") {
-          JSON.parse(resolvedScriptCode);
-        } else if (resolvedScriptType === "jsonata") {
-          jsonata(resolvedScriptCode);
-        } else if (resolvedScriptType === "javascript") {
-          new vm.Script(resolvedScriptCode);
-        }
+        new Function(resolvedJavascriptCode);
       } catch (err: any) {
         res.status(400).json({
           error: "BadRequest",
-          message: `Invalid script code for type ${resolvedScriptType}: ${err.message}`,
+          message: `Invalid JavaScript syntax: ${err.message}`,
+        });
+        return;
+      }
+    }
+
+    // Validate JSONata
+    if (resolvedJsonataCode) {
+      try {
+        jsonata(resolvedJsonataCode);
+      } catch (err: any) {
+        res.status(400).json({
+          error: "BadRequest",
+          message: `Invalid JSONata expression: ${err.message}`,
+        });
+        return;
+      }
+    }
+
+    // Validate JSON Logic
+    if (resolvedJsonlogicCode) {
+      try {
+        JSON.parse(resolvedJsonlogicCode);
+      } catch (err: any) {
+        res.status(400).json({
+          error: "BadRequest",
+          message: `Invalid JSON Logic rules: ${err.message}`,
         });
         return;
       }
@@ -242,6 +350,9 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
       template: template || "",
       compiledCss,
       parameters: parameters || {},
+      javascriptCode: resolvedJavascriptCode,
+      jsonataCode: resolvedJsonataCode,
+      jsonlogicCode: resolvedJsonlogicCode,
       scriptType: resolvedScriptType,
       scriptCode: resolvedScriptCode,
       updatedAt: new Date(),
@@ -342,41 +453,33 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
       data = await response.json().catch(() => response.text());
     }
 
-    // Apply scripting / logic transformation
-    const scriptType = endpointDoc.scriptType || "none";
-    const scriptCode = endpointDoc.scriptCode || "";
+    // Apply scripting / logic transformation pipeline
+    const javascriptCode = endpointDoc.javascriptCode || (endpointDoc.scriptType === "javascript" ? endpointDoc.scriptCode : "");
+    const jsonataCode = endpointDoc.jsonataCode || (endpointDoc.scriptType === "jsonata" ? endpointDoc.scriptCode : "");
+    const jsonlogicCode = endpointDoc.jsonlogicCode || (endpointDoc.scriptType === "jsonlogic" ? endpointDoc.scriptCode : "");
+
     let transformedData = data;
 
-    if (scriptCode && scriptType !== "none") {
+    // 1. JSONata Transform
+    if (jsonataCode) {
       try {
-        if (scriptType === "jsonata") {
-          const expr = jsonata(scriptCode);
-          transformedData = await expr.evaluate(data);
-        } else if (scriptType === "jsonlogic") {
-          const rule = JSON.parse(scriptCode);
-          transformedData = jsonLogic.apply(rule, data);
-        } else if (scriptType === "javascript") {
-          const sandbox = {
-            input: data,
-            result: undefined as any,
-            console: {
-              log: (...args: any[]) => console.log("[Sandbox Log]:", ...args),
-              error: (...args: any[]) => console.error("[Sandbox Error]:", ...args),
-            },
-          };
-          const context = vm.createContext(sandbox);
-          const wrappedCode = `
-            (function() {
-              ${scriptCode}
-            })()
-          `;
-          const vmScript = new vm.Script(wrappedCode);
-          vmScript.runInContext(context, { timeout: 1000 });
-          transformedData = sandbox.result !== undefined ? sandbox.result : data;
-        }
+        const expr = jsonata(jsonataCode);
+        transformedData = await expr.evaluate(transformedData);
       } catch (err: any) {
-        console.error("Script execution error:", err);
-        res.status(400).json({ error: "BadRequest", message: `Failed to execute script: ${err.message}` });
+        console.error("JSONata transform error:", err);
+        res.status(400).json({ error: "BadRequest", message: `Failed to execute JSONata query: ${err.message}` });
+        return;
+      }
+    }
+
+    // 2. JSON Logic Rule
+    if (jsonlogicCode) {
+      try {
+        const rule = JSON.parse(jsonlogicCode);
+        transformedData = jsonLogic.apply(rule, transformedData);
+      } catch (err: any) {
+        console.error("JSON Logic evaluation error:", err);
+        res.status(400).json({ error: "BadRequest", message: `Failed to evaluate JSON Logic rules: ${err.message}` });
         return;
       }
     }
@@ -400,9 +503,27 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
       html = await generateResponseInNaturalLanguage(endpointDoc.description, transformedData);
     }
 
-    // Inject data and resize scripts for secure iframe rendering
+    // Inject data, client script, and resize scripts for secure iframe rendering
     const jsonString = JSON.stringify(transformedData).replace(/<\/script/gi, '<\\/script');
     const dataScript = `<script id="agenthooks-data" type="application/json">${jsonString}</script>`;
+    
+    let clientJavascriptScript = "";
+    if (javascriptCode) {
+      clientJavascriptScript = `
+<script>
+  (function() {
+    try {
+      const data = JSON.parse(document.getElementById('agenthooks-data').textContent || '{}');
+      const input = data;
+      ${javascriptCode}
+    } catch (err) {
+      console.error("Error executing client-side script:", err);
+    }
+  })();
+</script>
+`;
+    }
+
     const autoResizeScript = `
 <script>
   (function() {
@@ -420,7 +541,7 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
 </script>
 `;
 
-    html = `${html}\n${dataScript}\n${autoResizeScript}`;
+    html = `${html}\n${dataScript}\n${clientJavascriptScript}\n${autoResizeScript}`;
 
     res.json({ html, css, data: transformedData });
   } catch (err) {
