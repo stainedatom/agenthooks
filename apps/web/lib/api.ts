@@ -233,3 +233,20 @@ export async function executeEndpoint(
     body: JSON.stringify(params || {}),
   });
 }
+
+export async function previewEndpoint(data: {
+  description: string;
+  method: string;
+  endpoint?: string;
+  template?: string;
+  parameters?: Record<string, unknown> | string;
+  javascriptCode?: string;
+  jsonataCode?: string;
+  jsonlogicCode?: string;
+}): Promise<ExecuteResult> {
+  return request<ExecuteResult>("/api/endpoints/preview", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
