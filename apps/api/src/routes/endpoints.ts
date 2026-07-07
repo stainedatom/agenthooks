@@ -386,113 +386,107 @@ interface PipelineOptions {
   description: string;
 }
 
-async function runPipeline(
-  options: PipelineOptions,
-  executionParams: Record<string, any>,
-  forceCompileCss = false
-): Promise<{ html: string; css: string; data: any }> {
-  // Determine initial data
-  let data: any = executionParams;
+async function fetchDataFromExternalEndpoint(
+  method: string,
+  endpoint: string,
+  executionParams: Record<string, any>
+): Promise<any> {
+  const fetchOptions: RequestInit = { method };
+  let fetchUrl = endpoint;
 
-  if (options.endpoint && options.method !== "NONE") {
-    const method = options.method;
-    let fetchUrl = options.endpoint;
-    const fetchOptions: RequestInit = { method };
-
-    if (method === "GET") {
-      try {
-        const url = new URL(fetchUrl);
-        Object.entries(executionParams).forEach(([key, value]) => {
-          url.searchParams.set(key, String(value));
-        });
-        fetchUrl = url.toString();
-      } catch {
-        // relative or invalid URL format, ignore and proceed
-      }
-    } else if (["POST", "PUT", "PATCH"].includes(method)) {
-      fetchOptions.body = JSON.stringify(executionParams);
-      fetchOptions.headers = { "Content-Type": "application/json" };
-    }
-
-    let response: globalThis.Response;
+  if (method === "GET") {
     try {
-      response = await fetch(fetchUrl, fetchOptions);
-    } catch (fetchErr: any) {
-      console.error("External API connection failed:", fetchErr);
-      throw new Error(`Failed to connect to external API at ${fetchUrl}: ${fetchErr.message}`);
+      const url = new URL(fetchUrl);
+      Object.entries(executionParams).forEach(([key, value]) => {
+        url.searchParams.set(key, String(value));
+      });
+      fetchUrl = url.toString();
+    } catch {
+      // relative or invalid URL format, ignore and proceed
     }
-
-    if (!response.ok) {
-      throw new Error(`External API responded with status ${response.status}`);
-    }
-
-    data = await response.json().catch(() => response.text());
+  } else if (["POST", "PUT", "PATCH"].includes(method)) {
+    fetchOptions.body = JSON.stringify(executionParams);
+    fetchOptions.headers = { "Content-Type": "application/json" };
   }
 
-  let transformedData = data;
-
-  // 1. JSONata Transform
-  if (options.jsonataCode) {
-    try {
-      const expr = jsonata(options.jsonataCode);
-      transformedData = await expr.evaluate(transformedData);
-    } catch (err: any) {
-      console.error("JSONata transform error:", err);
-      throw new Error(`Failed to execute JSONata query: ${err.message}`);
-    }
+  let response: globalThis.Response;
+  try {
+    response = await fetch(fetchUrl, fetchOptions);
+  } catch (fetchErr: any) {
+    console.error("External API connection failed:", fetchErr);
+    throw new Error(`Failed to connect to external API at ${fetchUrl}: ${fetchErr.message}`);
   }
 
-  // 2. JSON Logic Rule
-  if (options.jsonlogicCode) {
-    try {
-      const rule = JSON.parse(options.jsonlogicCode);
-      transformedData = jsonLogic.apply(rule, transformedData);
-    } catch (err: any) {
-      console.error("JSON Logic evaluation error:", err);
-      throw new Error(`Failed to evaluate JSON Logic rules: ${err.message}`);
-    }
+  if (!response.ok) {
+    throw new Error(`External API responded with status ${response.status}`);
   }
 
-  // Determine CSS
-  let css = options.compiledCss || "";
-  if (options.template && (forceCompileCss || !css)) {
-    try {
-      css = await compileTailwind(options.template);
-    } catch (err) {
-      console.error("Tailwind compilation error:", err);
-    }
-  }
+  return response.json().catch(() => response.text());
+}
 
-  // Render template
-  let html = "";
-  if (options.template) {
+async function applyJsonataTransformation(jsonataCode: string, data: any): Promise<any> {
+  try {
+    const expr = jsonata(jsonataCode);
+    return await expr.evaluate(data);
+  } catch (err: any) {
+    console.error("JSONata transform error:", err);
+    throw new Error(`Failed to execute JSONata query: ${err.message}`);
+  }
+}
+
+function applyJsonLogicEvaluation(jsonlogicCode: string, data: any): any {
+  try {
+    const rule = JSON.parse(jsonlogicCode);
+    return jsonLogic.apply(rule, data);
+  } catch (err: any) {
+    console.error("JSON Logic evaluation error:", err);
+    throw new Error(`Failed to evaluate JSON Logic rules: ${err.message}`);
+  }
+}
+
+async function compileTailwindCssForTemplate(template: string): Promise<string> {
+  try {
+    return await compileTailwind(template);
+  } catch (err) {
+    console.error("Tailwind compilation error:", err);
+    return "";
+  }
+}
+
+async function renderTemplateHtml(
+  template: string | undefined,
+  data: any,
+  css: string,
+  description: string
+): Promise<string> {
+  if (template) {
     try {
-      const template = Handlebars.compile(options.template);
-      const rendered = template(transformedData);
+      const templateFn = Handlebars.compile(template);
+      const rendered = templateFn(data);
       const hasStyleTag = /<style[\s>/]/i.test(rendered);
-      html = hasStyleTag ? rendered : `<style>\n${css}\n</style>\n${rendered}`;
+      return hasStyleTag ? rendered : `<style>\n${css}\n</style>\n${rendered}`;
     } catch (err) {
       console.error("Template render error:", err);
-      html = "<p>Error rendering template</p>";
+      return "<p>Error rendering template</p>";
     }
-  } else {
-    // No template — use natural language generator
-    html = await generateResponseInNaturalLanguage(options.description, transformedData);
   }
+  // No template — use natural language generator
+  return generateResponseInNaturalLanguage(description, data);
+}
 
-  // Inject data, client script, and resize scripts
-  const jsonString = JSON.stringify(transformedData).replace(/<\/script/gi, '<\\/script');
-  const dataScript = `<script id="agenthooks-data" type="application/json">${jsonString}</script>`;
+function injectClientScripts(html: string, data: any, javascriptCode?: string): string {
+  const jsonString = JSON.stringify(data).replace(/<\/script/gi, '<\\/script');
+  const dataScript = `<script id="aghentooks-data" type="application/json">${jsonString}</script>`;
   
   let clientJavascriptScript = "";
-  if (options.javascriptCode) {
+  if (javascriptCode) {
     clientJavascriptScript = `
 <script>
   (function() {
     try {
-      const data = JSON.parse(document.getElementById('agenthooks-data').textContent || '{}');
+      const data = JSON.parse(document.getElementById('aghentooks-data').textContent || '{}');
       const input = data;
-      ${options.javascriptCode}
+      ${javascriptCode}
     } catch (err) {
       console.error("Error executing client-side script:", err);
     }
@@ -506,7 +500,8 @@ async function runPipeline(
   (function() {
     function sendHeight() {
       const height = document.documentElement.scrollHeight || document.body.scrollHeight;
-      window.parent.postMessage({ type: 'resize-iframe', height }, '*');
+      const id = window.frameElement ? window.frameElement.id : '';
+      window.parent.postMessage({ type: 'resize-iframe', height, id }, '*');
     }
     window.addEventListener('load', sendHeight);
     window.addEventListener('resize', sendHeight);
@@ -518,9 +513,44 @@ async function runPipeline(
 </script>
 `;
 
-  html = `${html}\n${dataScript}\n${clientJavascriptScript}\n${autoResizeScript}`;
+  return `${html}\n${dataScript}\n${clientJavascriptScript}\n${autoResizeScript}`;
+}
 
-  return { html, css, data: transformedData };
+async function runPipeline(
+  options: PipelineOptions,
+  executionParams: Record<string, any>,
+  forceCompileCss = false
+): Promise<{ html: string; css: string; data: any }> {
+  // Determine initial data
+  let data: any = executionParams;
+
+  if (options.endpoint && options.method !== "NONE") {
+    data = await fetchDataFromExternalEndpoint(options.method, options.endpoint, executionParams);
+  }
+
+  // 1. JSONata Transform
+  if (options.jsonataCode) {
+    data = await applyJsonataTransformation(options.jsonataCode, data);
+  }
+
+  // 2. JSON Logic Rule
+  if (options.jsonlogicCode) {
+    data = applyJsonLogicEvaluation(options.jsonlogicCode, data);
+  }
+
+  // Determine CSS
+  let css = options.compiledCss || "";
+  if (options.template && (forceCompileCss || !css)) {
+    css = await compileTailwindCssForTemplate(options.template);
+  }
+
+  // Render template
+  let html = await renderTemplateHtml(options.template, data, css, options.description);
+
+  // Inject scripts
+  html = injectClientScripts(html, data, options.javascriptCode);
+
+  return { html, css, data };
 }
 
 // POST /api/endpoints/preview — Execute pipeline using unsaved UI/Script parameters for preview
