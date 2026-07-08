@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   listEndpoints,
   createEndpoint,
@@ -316,6 +317,12 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/chat"
+            className="px-3 py-2 text-sm text-gray-600 hover:text-black cursor-pointer transition-colors"
+          >
+            Chat
+          </Link>
           <button
             onClick={() => { setError(""); setFormValues(defaultFormValues); setShowCreate(true); }}
             className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
