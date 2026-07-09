@@ -5,8 +5,9 @@ import mongoclient from "./dbclient";
 import { config } from "./config";
 import authRoutes from "./routes/auth";
 import endpointRoutes from "./routes/endpoints";
-import { streamText, pipeUIMessageStreamToResponse, convertToModelMessages } from "ai";
+import { streamText, pipeUIMessageStreamToResponse, convertToModelMessages, stepCountIs } from "ai";
 import { createOllama } from "ollama-ai-provider-v2";
+import { getDynamicEndpointsTools } from "./tools/dynamicTools";
 
 const app = express();
 
@@ -57,9 +58,33 @@ app.post("/api/chat", async (req, res) => {
 
     const modelMessages = await convertToModelMessages(formattedMessages);
 
+    // Load dynamic endpoint tools from the database
+    const dynamicEndpointsTools = await getDynamicEndpointsTools();
+
+    // Convert the registry array into a tools object for streamText
+    const tools = dynamicEndpointsTools.reduce((acc, item) => {
+      acc[item.name] = item.tool;
+      return acc;
+    }, {} as Record<string, any>);
+
+    // Build a system prompt hint so the LLM knows about available endpoint tools
+    const endpointDescriptions = dynamicEndpointsTools
+      .map((item) => `- ${item.name}: ${item.tool.description}`)
+      .join("\n");
+
+    const toolsHint = dynamicEndpointsTools.length > 0
+      ? `\n\nYou have access to the following API endpoint tools. Use them when the user asks about data these endpoints provide:\n${endpointDescriptions}`
+      : "";
+
+    const systemMessage = `You are a helpful assistant that can answer questions and execute API endpoints on behalf of the user.${toolsHint}`;
+
     const result = streamText({
       model: ollama(config.aiModel),
+      system: systemMessage,
       messages: modelMessages,
+      tools: Object.keys(tools).length > 0 ? tools : undefined,
+      toolChoice: "auto",
+      stopWhen: stepCountIs(5),
     });
 
     return pipeUIMessageStreamToResponse({
