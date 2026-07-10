@@ -16,6 +16,7 @@
     "@tailwindcss/postcss": "^4.3.1",
     "ai": "^5.0.60",
     "lucide-react": "^1.23.0",
+    "marked": "^18.0.5",
     "next": "16.2.0",
     "postcss": "^8.5.15",
     "react": "^19.2.0",
