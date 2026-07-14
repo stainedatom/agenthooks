@@ -797,11 +797,19 @@ export default function DashboardPage() {
                       (ep.endpoint && ep.endpoint.toLowerCase().includes(endpointSearchQuery.toLowerCase()))
                     );
 
-                    if (filtered.length === 0) {
+                    const sorted = [...filtered].sort((a, b) => {
+                      const aSelected = selectedEndpointIds.includes(a._id);
+                      const bSelected = selectedEndpointIds.includes(b._id);
+                      if (aSelected && !bSelected) return -1;
+                      if (!aSelected && bSelected) return 1;
+                      return 0;
+                    });
+
+                    if (sorted.length === 0) {
                       return <p className="text-xs text-gray-400 text-center py-4">No endpoints match your query.</p>;
                     }
 
-                    return filtered.map((ep) => {
+                    return sorted.map((ep) => {
                       const isSelected = selectedEndpointIds.includes(ep._id);
                       return (
                         <div
