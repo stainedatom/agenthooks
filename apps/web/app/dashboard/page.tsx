@@ -26,7 +26,7 @@ import PreviewPanel from "../components/PreviewPanel";
 import StudioHeaderActions from "../components/StudioHeaderActions";
 import RunModal from "../components/RunModal";
 import MethodBadge from "../components/MethodBadge";
-import { Folder, Edit, Trash2, X, Plus } from "lucide-react";
+import { Folder, Edit, Trash2, X, Plus, MessageSquare, LogOut } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -427,33 +427,41 @@ export default function DashboardPage() {
             <p className="text-xs text-gray-500">{user.email}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Link
             href="/chat"
-            className="px-3 py-2 text-sm text-gray-600 hover:text-black cursor-pointer transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg cursor-pointer transition-all duration-150 font-medium"
           >
-            Chat
+            <MessageSquare size={16} className="text-gray-400" />
+            <span>Chat</span>
           </Link>
+          
+          <div className="w-px h-4 bg-gray-200" />
+
           {activeTab === "endpoints" ? (
             <button
               onClick={() => { setError(""); setFormValues(defaultFormValues); setShowCreate(true); }}
-              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
+              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors shadow-sm"
             >
               + New Endpoint
             </button>
           ) : (
             <button
               onClick={openCreateCollectionModal}
-              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors flex items-center gap-1.5 shadow-sm"
             >
               <Plus size={16} /> New Collection
             </button>
           )}
+
+          <div className="w-px h-4 bg-gray-200" />
+
           <button
             onClick={handleLogout}
-            className="px-3 py-2 text-sm text-gray-600 hover:text-red-600 cursor-pointer transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50/50 rounded-lg cursor-pointer transition-all duration-150 font-medium"
           >
-            Logout
+            <LogOut size={16} className="text-gray-450" />
+            <span>Logout</span>
           </button>
         </div>
       </header>
