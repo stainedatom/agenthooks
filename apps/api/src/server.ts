@@ -5,6 +5,7 @@ import mongoclient from "./dbclient";
 import { config } from "./config";
 import authRoutes from "./routes/auth";
 import endpointRoutes from "./routes/endpoints";
+import collectionRoutes from "./routes/collections";
 import { streamText, pipeUIMessageStreamToResponse, convertToModelMessages, stepCountIs } from "ai";
 import { createOllama } from "ollama-ai-provider-v2";
 import { getDynamicEndpointsTools } from "./tools/dynamicTools";
@@ -26,6 +27,7 @@ app.use(
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/endpoints", endpointRoutes);
+app.use("/api/collections", collectionRoutes);
 
 // Health check
 app.get("/api/health", (_req, res) => {
