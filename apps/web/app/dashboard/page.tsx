@@ -15,12 +15,18 @@ import {
   getMe,
   logout,
   User,
+  listCollections,
+  createCollection,
+  updateCollection,
+  deleteCollection,
+  EndpointCollection,
 } from "../../lib/api";
 import EndpointForm, { EndpointFormValues, defaultFormValues } from "../components/EndpointForm";
 import PreviewPanel from "../components/PreviewPanel";
 import StudioHeaderActions from "../components/StudioHeaderActions";
 import RunModal from "../components/RunModal";
 import MethodBadge from "../components/MethodBadge";
+import { Folder, Edit, Trash2, X, Plus } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -28,6 +34,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [error, setError] = useState("");
+
+  // Tab control
+  const [activeTab, setActiveTab] = useState<"endpoints" | "collections">("endpoints");
+
+  // Collection states
+  const [collections, setCollections] = useState<EndpointCollection[]>([]);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [collectionModalMode, setCollectionModalMode] = useState<"create" | "edit">("create");
+  const [editCollectionId, setEditCollectionId] = useState("");
+  const [collectionName, setCollectionName] = useState("");
+  const [collectionDescription, setCollectionDescription] = useState("");
+  const [selectedEndpointIds, setSelectedEndpointIds] = useState<string[]>([]);
+  const [endpointSearchQuery, setEndpointSearchQuery] = useState("");
 
   // Panel visibility
   const [showCreate, setShowCreate] = useState(false);
@@ -55,8 +74,15 @@ export default function DashboardPage() {
       try {
         const userData = await getMe();
         setUser(userData.user);
-        const eps = await listEndpoints();
+        
+        // Fetch endpoints and collections in parallel
+        const [eps, cols] = await Promise.all([
+          listEndpoints(),
+          listCollections()
+        ]);
+        
         setEndpoints(eps);
+        setCollections(cols);
       } catch {
         router.push("/login");
       } finally {
@@ -65,6 +91,91 @@ export default function DashboardPage() {
     }
     init();
   }, [router]);
+
+  async function handleCreateCollection(e: React.FormEvent) {
+    e.preventDefault();
+    if (!collectionName.trim()) {
+      setError("Collection name is required");
+      return;
+    }
+    try {
+      const col = await createCollection({
+        name: collectionName.trim(),
+        description: collectionDescription.trim(),
+        endpointIds: selectedEndpointIds,
+      });
+      setCollections([col, ...collections]);
+      setShowCollectionModal(false);
+      resetCollectionForm();
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create collection");
+    }
+  }
+
+  async function handleUpdateCollection(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editCollectionId) return;
+    if (!collectionName.trim()) {
+      setError("Collection name is required");
+      return;
+    }
+    try {
+      const col = await updateCollection(editCollectionId, {
+        name: collectionName.trim(),
+        description: collectionDescription.trim(),
+        endpointIds: selectedEndpointIds,
+      });
+      setCollections(collections.map((c) => (c._id === editCollectionId ? col : c)));
+      setShowCollectionModal(false);
+      resetCollectionForm();
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update collection");
+    }
+  }
+
+  async function handleDeleteCollection(id: string) {
+    if (!confirm("Delete this collection?")) return;
+    try {
+      await deleteCollection(id);
+      setCollections(collections.filter((c) => c._id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete collection");
+    }
+  }
+
+  function resetCollectionForm() {
+    setCollectionName("");
+    setCollectionDescription("");
+    setSelectedEndpointIds([]);
+    setEditCollectionId("");
+    setEndpointSearchQuery("");
+  }
+
+  function openCreateCollectionModal() {
+    resetCollectionForm();
+    setCollectionModalMode("create");
+    setShowCollectionModal(true);
+  }
+
+  function openEditCollectionModal(col: EndpointCollection) {
+    setCollectionName(col.name);
+    setCollectionDescription(col.description || "");
+    setSelectedEndpointIds(col.endpointIds || []);
+    setEditCollectionId(col._id);
+    setCollectionModalMode("edit");
+    setShowCollectionModal(true);
+  }
+
+  function toggleEndpointSelection(endpointId: string) {
+    setSelectedEndpointIds((prev) =>
+      prev.includes(endpointId)
+        ? prev.filter((id) => id !== endpointId)
+        : [...prev, endpointId]
+    );
+  }
+
 
 
   async function handleRunPreview() {
@@ -303,7 +414,7 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans antialiased">
+    <div className="min-h-screen bg-gray-50 font-sans antialiased text-gray-900">
 
       {/* ── Dashboard header ─────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
@@ -323,12 +434,21 @@ export default function DashboardPage() {
           >
             Chat
           </Link>
-          <button
-            onClick={() => { setError(""); setFormValues(defaultFormValues); setShowCreate(true); }}
-            className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
-          >
-            + New Endpoint
-          </button>
+          {activeTab === "endpoints" ? (
+            <button
+              onClick={() => { setError(""); setFormValues(defaultFormValues); setShowCreate(true); }}
+              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
+            >
+              + New Endpoint
+            </button>
+          ) : (
+            <button
+              onClick={openCreateCollectionModal}
+              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+            >
+              <Plus size={16} /> New Collection
+            </button>
+          )}
           <button
             onClick={handleLogout}
             className="px-3 py-2 text-sm text-gray-600 hover:text-red-600 cursor-pointer transition-colors"
@@ -338,62 +458,178 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* ── Endpoint list ─────────────────────────────────────────── */}
+      {/* ── Main content area with tabs ──────────────────────────── */}
       <main className="max-w-4xl mx-auto px-6 py-8">
         {error && (
-          <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4 text-sm">{error}</div>
+          <div className="bg-red-150 border border-red-200 text-red-750 p-3 rounded-lg mb-4 text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="text-red-500 hover:text-red-700 font-bold">&times;</button>
+          </div>
         )}
 
-        {endpoints.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg mb-2">No endpoints yet</p>
-            <p className="text-gray-400 text-sm mb-6">
-              Create your first endpoint to start generating UI
-            </p>
-            <button
-              onClick={() => { setError(""); setFormValues(defaultFormValues); setShowCreate(true); }}
-              className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
-            >
-              + Create Endpoint
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {endpoints.map((ep) => (
-              <div
-                key={ep._id}
-                className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center justify-between"
+        {/* ── Tab selection tabs ── */}
+        <div className="flex border-b border-gray-200 mb-6 gap-6">
+          <button
+            onClick={() => { setActiveTab("endpoints"); setError(""); }}
+            className={`pb-3 text-sm font-semibold border-b-2 cursor-pointer transition-colors ${
+              activeTab === "endpoints"
+                ? "border-black text-black"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            Endpoints ({endpoints.length})
+          </button>
+          <button
+            onClick={() => { setActiveTab("collections"); setError(""); }}
+            className={`pb-3 text-sm font-semibold border-b-2 cursor-pointer transition-colors ${
+              activeTab === "collections"
+                ? "border-black text-black"
+                : "border-transparent text-gray-400 hover:text-gray-600"
+            }`}
+          >
+            Collections ({collections.length})
+          </button>
+        </div>
+
+        {activeTab === "endpoints" ? (
+          endpoints.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-2xl border border-gray-150 shadow-sm">
+              <p className="text-gray-400 text-lg mb-2">No endpoints yet</p>
+              <p className="text-gray-400 text-sm mb-6">
+                Create your first endpoint to start generating UI
+              </p>
+              <button
+                onClick={() => { setError(""); setFormValues(defaultFormValues); setShowCreate(true); }}
+                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
               >
-                <div className="flex items-center gap-4">
-                  <MethodBadge method={ep.method} />
-                  <div>
-                    <p className="text-sm font-semibold">{ep.description}</p>
-                    <p className="text-xs text-gray-400 font-mono truncate max-w-md">{ep.endpoint}</p>
+                + Create Endpoint
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {endpoints.map((ep) => (
+                <div
+                  key={ep._id}
+                  className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <MethodBadge method={ep.method} />
+                    <div>
+                      <p className="text-sm font-semibold">{ep.description}</p>
+                      <p className="text-xs text-gray-400 font-mono truncate max-w-md">{ep.endpoint}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleExecute(ep)}
+                      className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+                    >
+                      Run
+                    </button>
+                    <button
+                      onClick={() => openEditStudio(ep)}
+                      className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(ep._id)}
+                      className="px-3 py-1.5 text-xs font-medium text-red-650 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleExecute(ep)}
-                    className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
-                  >
-                    Run
-                  </button>
-                  <button
-                    onClick={() => openEditStudio(ep)}
-                    className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(ep._id)}
-                    className="px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
-                  >
-                    Delete
-                  </button>
+              ))}
+            </div>
+          )
+        ) : (
+          collections.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-2xl border border-gray-155 shadow-sm">
+              <Folder className="mx-auto text-gray-300 w-12 h-12 mb-4 animate-pulse" />
+              <p className="text-gray-600 text-lg font-semibold mb-1">No collections yet</p>
+              <p className="text-gray-400 text-sm mb-6 max-w-xs mx-auto">
+                Group your endpoints into collections to organize and prepare them for chat.
+              </p>
+              <button
+                onClick={openCreateCollectionModal}
+                className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-800 transition-colors"
+              >
+                + Create Collection
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {collections.map((col) => (
+                <div
+                  key={col._id}
+                  className="bg-white rounded-xl p-5 shadow-sm border border-gray-150 flex flex-col justify-between hover:shadow-md transition-all duration-150"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Folder size={18} className="text-gray-450 shrink-0" />
+                      <h3 className="text-sm font-bold text-gray-900 truncate">{col.name}</h3>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-4 line-clamp-2 min-h-[2rem]">
+                      {col.description || "No description provided."}
+                    </p>
+                    
+                    {/* Endpoints preview */}
+                    <div className="space-y-1.5 mb-4">
+                      <span className="text-xxs font-semibold text-gray-450 uppercase tracking-wider">Endpoints ({col.endpointIds.length})</span>
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {col.endpointIds.length === 0 ? (
+                          <span className="text-xxs text-gray-400 italic">No endpoints in this collection</span>
+                        ) : (() => {
+                          const maxVisible = 3;
+                          const visibleIds = col.endpointIds.slice(0, maxVisible);
+                          const remainingCount = col.endpointIds.length - maxVisible;
+
+                          return (
+                            <>
+                              {visibleIds.map(id => {
+                                const ep = endpoints.find(e => e._id === id);
+                                if (!ep) return null;
+                                return (
+                                  <span key={id} className="text-xxs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-sans font-medium truncate max-w-[150px]" title={ep.description}>
+                                    {ep.description}
+                                  </span>
+                                );
+                              })}
+                              {remainingCount > 0 && (
+                                <span className="text-xxs text-gray-400 px-1 py-0.5 font-sans font-medium">
+                                  +{remainingCount} more
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-end border-t border-gray-100 pt-4 mt-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEditCollectionModal(col)}
+                        className="p-1.5 text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
+                        title="Edit Collection"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCollection(col._id)}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"
+                        title="Delete Collection"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
         )}
       </main>
 
@@ -490,6 +726,130 @@ export default function DashboardPage() {
           onRefresh={() => handleExecute(execEndpoint)}
           onClose={() => { setExecEndpoint(null); setExecResult(null); setExecError(""); }}
         />
+      )}
+
+      {/* ── Collection Modal ──────────────────────────────────────── */}
+      {showCollectionModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-5 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col overflow-hidden border border-gray-150">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-100 bg-gray-50/55">
+              <h2 className="text-base font-bold text-gray-900">
+                {collectionModalMode === "create" ? "New Collection" : "Edit Collection"}
+              </h2>
+              <button
+                onClick={() => { setShowCollectionModal(false); setError(""); }}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer p-1 transition-colors bg-transparent border-0 outline-none"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={collectionModalMode === "create" ? handleCreateCollection : handleUpdateCollection} className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-gray-500">Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Weather Hub"
+                  value={collectionName}
+                  onChange={(e) => setCollectionName(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-gray-500">Description</label>
+                <textarea
+                  placeholder="What is this collection for?"
+                  value={collectionDescription}
+                  onChange={(e) => setCollectionDescription(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm h-20 resize-none focus:outline-none focus:ring-2 focus:ring-black"
+                />
+              </div>
+
+              {/* Endpoints list with checkboxes */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs font-semibold text-gray-500">Select Endpoints</label>
+                  {selectedEndpointIds.length > 0 && (
+                    <span className="text-xxs font-bold bg-black text-white px-2 py-0.5 rounded-full shadow-sm">
+                      {selectedEndpointIds.length} selected
+                    </span>
+                  )}
+                </div>
+                
+                <input
+                  type="text"
+                  placeholder="Filter endpoints by description or path..."
+                  value={endpointSearchQuery}
+                  onChange={(e) => setEndpointSearchQuery(e.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs mb-2 focus:outline-none focus:ring-1 focus:ring-black placeholder-gray-400 bg-gray-50/50"
+                />
+
+                <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto divide-y divide-gray-100 p-1.5 bg-gray-50/20">
+                  {endpoints.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-4">No endpoints created yet.</p>
+                  ) : (() => {
+                    const filtered = endpoints.filter(ep => 
+                      ep.description.toLowerCase().includes(endpointSearchQuery.toLowerCase()) || 
+                      (ep.endpoint && ep.endpoint.toLowerCase().includes(endpointSearchQuery.toLowerCase()))
+                    );
+
+                    if (filtered.length === 0) {
+                      return <p className="text-xs text-gray-400 text-center py-4">No endpoints match your query.</p>;
+                    }
+
+                    return filtered.map((ep) => {
+                      const isSelected = selectedEndpointIds.includes(ep._id);
+                      return (
+                        <div
+                          key={ep._id}
+                          onClick={() => toggleEndpointSelection(ep._id)}
+                          className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all duration-150 my-0.5 border ${
+                            isSelected
+                              ? "bg-black/5 border-black/10 font-medium"
+                              : "bg-white border-transparent hover:bg-gray-50/80"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}} // handled by onClick on parent div
+                            className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-gray-900 truncate">{ep.description}</p>
+                            <p className="text-xxs font-mono text-gray-450 truncate">{ep.endpoint}</p>
+                          </div>
+                          <MethodBadge method={ep.method} className="scale-90 shrink-0" />
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex items-center justify-end gap-2 border-t border-gray-100 pt-4 mt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowCollectionModal(false); setError(""); }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 cursor-pointer transition-colors bg-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 cursor-pointer transition-colors border-0"
+                >
+                  {collectionModalMode === "create" ? "Create Collection" : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
