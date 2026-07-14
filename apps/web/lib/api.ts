@@ -250,3 +250,51 @@ export async function previewEndpoint(data: {
   });
 }
 
+// ─── Collections ─────────────────────────────────────────
+
+export interface EndpointCollection {
+  _id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  endpointIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listCollections(): Promise<EndpointCollection[]> {
+  return request<EndpointCollection[]>("/api/collections");
+}
+
+export async function createCollection(data: {
+  name: string;
+  description?: string;
+  endpointIds?: string[];
+}): Promise<EndpointCollection> {
+  return request<EndpointCollection>("/api/collections", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCollection(
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    endpointIds?: string[];
+  }
+): Promise<EndpointCollection> {
+  return request<EndpointCollection>(`/api/collections/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCollection(id: string): Promise<void> {
+  await request<{ message: string }>(`/api/collections/${id}`, {
+    method: "DELETE",
+  });
+}
+
+
