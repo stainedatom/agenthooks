@@ -181,17 +181,8 @@ export default function ChatPage() {
                       <div className="space-y-3">
                         {msg.parts.map((part: any, partIdx: number) => {
                           if (part.type === "text") {
-                            // Check if there is any other part in this message that is a tool output with a template
-                            const hasTemplateWidget = msg.parts.some(
-                              (p: any) =>
-                                (p.type === "dynamic-tool" || p.type.startsWith("tool-")) &&
-                                p.state === "output-available" &&
-                                p.output?.success &&
-                                p.output?.hasTemplate
-                            );
-                            if (hasTemplateWidget) {
-                              return null;
-                            }
+                            // Text is automatically suppressed at the message level when
+                            // a template widget is rendered (see hasTemplateWidget check above)
                             const parsedHtml = marked.parse(part.text) as string;
                             return (
                               <div
