@@ -92,6 +92,26 @@ export default function DashboardPage() {
     init();
   }, [router]);
 
+  // Listen for download-file messages from sandboxed preview or execution iframes
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data && event.data.type === "download-file") {
+        const { filename, content, mimeType } = event.data;
+        const blob = new Blob([content], { type: mimeType || "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename || "download.txt";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   async function handleCreateCollection(e: React.FormEvent) {
     e.preventDefault();
     if (!collectionName.trim()) {

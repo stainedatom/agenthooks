@@ -10,7 +10,7 @@ export default function ChatPage() {
   const { messages, sendMessage, status, stop } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
-
+  
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -23,15 +23,28 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Listen for resize messages from sandboxed iframes
+  // Listen for messages from sandboxed iframes (resize, downloads, etc.)
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
-      if (event.data && event.data.type === "resize-iframe") {
+      if (!event.data) return;
+
+      if (event.data.type === "resize-iframe") {
         const iframe = document.getElementById(event.data.id) as HTMLIFrameElement;
         if (iframe) {
           const height = Math.min(event.data.height, 600); // limit card height in feed
           iframe.style.height = `${height}px`;
         }
+      } else if (event.data.type === "download-file") {
+        const { filename, content, mimeType } = event.data;
+        const blob = new Blob([content], { type: mimeType || "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename || "download.txt";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       }
     }
     window.addEventListener("message", handleMessage);
@@ -133,7 +146,7 @@ export default function ChatPage() {
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                         <span className="font-semibold text-sm text-gray-800">
-                          Widget Preview
+                          Widget
                         </span>
                       </div>
                       <button
