@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -57,6 +57,10 @@ export default function DashboardPage() {
   const [formValues, setFormValues] = useState<EndpointFormValues>(defaultFormValues);
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  // Ref to keep latest formValues accessible in the preview effect without stale closures
+  const formValuesRef = useRef(formValues);
+  formValuesRef.current = formValues;
 
   // Live Preview state
   const [previewHtml, setPreviewHtml] = useState("");
@@ -245,9 +249,10 @@ export default function DashboardPage() {
 
   // Auto-run preview when the studio opens
   useEffect(() => {
+    const currentFormValues = formValuesRef.current;
     if (showEdit && editId) {
       handleRunPreview();
-    } else if (showCreate && formValues.description.trim()) {
+    } else if (showCreate && currentFormValues.description.trim()) {
       handleRunPreview();
     } else {
       setPreviewHtml("");
