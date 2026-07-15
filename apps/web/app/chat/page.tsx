@@ -151,8 +151,8 @@ export default function ChatPage() {
                       id={`iframe-${templateWidgetPart.toolCallId}`}
                       srcDoc={templateWidgetPart.output.html}
                       sandbox="allow-scripts allow-forms"
-                      className="w-full border-0 block"
-                      style={{ minHeight: "150px", height: "300px" }}
+                      className="w-full border-0 block shadow-inner"
+                      style={{ minHeight: "400px", height: "600px" }}
                       title={`Widget: ${templateWidgetPart.toolName}`}
                     />
                   </div>
