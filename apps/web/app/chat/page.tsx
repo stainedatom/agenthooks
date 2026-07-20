@@ -8,7 +8,35 @@ import { marked } from "marked";
 
 export default function ChatPage() {
   const { messages, sendMessage, status, stop } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      fetch: async (url, init) => {
+        if (init && init.body && typeof init.body === "string") {
+          try {
+            const parsed = JSON.parse(init.body);
+            if (parsed.messages && Array.isArray(parsed.messages)) {
+              parsed.messages = parsed.messages.map((m: any) => {
+                if (!m.parts || !Array.isArray(m.parts)) return m;
+                return {
+                  ...m,
+                  parts: m.parts.map((part: any) => {
+                    if (part.output && typeof part.output === "object" && "html" in part.output) {
+                      const { html, ...restOutput } = part.output;
+                      return { ...part, output: restOutput };
+                    }
+                    return part;
+                  }),
+                };
+              });
+              init = { ...init, body: JSON.stringify(parsed) };
+            }
+          } catch {
+            // If JSON parsing fails, fall back to default request body
+          }
+        }
+        return fetch(url, init);
+      },
+    }),
   });
   
   const [input, setInput] = useState("");
