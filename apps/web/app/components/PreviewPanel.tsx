@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 interface PreviewPanelProps {
   isEditMode: boolean;
   previewHtml: string;
@@ -13,6 +15,19 @@ export default function PreviewPanel({
   previewError,
   previewLoading,
 }: PreviewPanelProps) {
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data && event.data.type === "resize-iframe") {
+        const iframe = document.getElementById("studio-preview-iframe") as HTMLIFrameElement;
+        if (iframe && iframe.contentWindow === event.source) {
+          iframe.style.height = `${event.data.height}px`;
+        }
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   return (
     <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5 min-h-0 bg-gray-50">
       <div className="flex items-center justify-between">

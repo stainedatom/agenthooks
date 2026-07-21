@@ -42,9 +42,6 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // States for fullscreen widget display
-  const [fullscreenHtml, setFullscreenHtml] = useState<string | null>(null);
-  const [fullscreenTitle, setFullscreenTitle] = useState<string>("");
 
   // Auto-scroll to the latest message
   useEffect(() => {
@@ -57,11 +54,14 @@ export default function ChatPage() {
       if (!event.data) return;
 
       if (event.data.type === "resize-iframe") {
-        const iframe = document.getElementById(event.data.id) as HTMLIFrameElement;
-        if (iframe) {
-          const height = Math.min(event.data.height, 600); // limit card height in feed
-          iframe.style.height = `${height}px`;
-        }
+        const iframes = document.querySelectorAll("iframe");
+        iframes.forEach((iframe) => {
+          if (iframe.contentWindow === event.source) {
+            const maxHeight = 600;
+            const targetHeight = Math.min(event.data.height, maxHeight);
+            iframe.style.height = `${targetHeight}px`;
+          }
+        });
       } else if (event.data.type === "download-file") {
         const { filename, content, mimeType } = event.data;
         const blob = new Blob([content], { type: mimeType || "text/plain" });
@@ -168,32 +168,12 @@ export default function ChatPage() {
                 </div>
 
                 {hasTemplateWidget ? (
-                  <div className="flex-1 w-full bg-white border border-gray-200 rounded-2xl shadow-md overflow-hidden text-gray-850 my-1 animate-in fade-in zoom-in-95 duration-150 max-w-[90%]">
-                    {/* Header */}
-                    <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="font-semibold text-sm text-gray-800">
-                          Widget
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setFullscreenHtml(templateWidgetPart.output.html);
-                          setFullscreenTitle("Widget Preview");
-                        }}
-                        className="px-2.5 py-1 text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg shadow-sm transition-all cursor-pointer"
-                      >
-                        Fullscreen
-                      </button>
-                    </div>
-                    {/* Frame */}
+                  <div className="flex-1 w-full my-1 animate-in fade-in duration-150 max-w-[90%]">
                     <iframe
-                      id={`iframe-${templateWidgetPart.toolCallId}`}
                       srcDoc={templateWidgetPart.output.html}
                       sandbox="allow-scripts allow-forms"
-                      className="w-full border-0 block shadow-inner"
-                      style={{ minHeight: "400px", height: "600px" }}
+                      className="w-full border-0 block"
+                      style={{ height: "auto" }}
                       title={`Widget: ${templateWidgetPart.toolName}`}
                     />
                   </div>
@@ -333,32 +313,7 @@ export default function ChatPage() {
           </button>
         </form>
       </div>
-      {/* Fullscreen Widget Modal */}
-      {fullscreenHtml && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-5 animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-6xl w-full shadow-2xl h-[85vh] max-h-[85vh] flex flex-col overflow-hidden border border-gray-200">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-5 pb-4 border-b border-gray-200 bg-gray-50/50">
-              <h2 className="text-base font-bold text-gray-900">{fullscreenTitle}</h2>
-              <button
-                onClick={() => setFullscreenHtml(null)}
-                className="text-gray-400 hover:text-gray-650 cursor-pointer text-2xl leading-none transition-colors px-2 py-1"
-              >
-                &times;
-              </button>
-            </div>
-            {/* Modal Body */}
-            <div className="flex-1 min-h-0 bg-white">
-              <iframe
-                srcDoc={fullscreenHtml}
-                sandbox="allow-scripts allow-forms"
-                className="w-full h-full border-0 block"
-                title="Fullscreen Widget Preview"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

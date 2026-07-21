@@ -150,16 +150,29 @@ export function injectClientScripts(html: string, data: any, javascriptCode?: st
 <script>
   (function() {
     function sendHeight() {
-      const height = document.documentElement.scrollHeight || document.body.scrollHeight;
-      const id = window.frameElement ? window.frameElement.id : '';
-      window.parent.postMessage({ type: 'resize-iframe', height, id }, '*');
+      const body = document.body;
+      const html = document.documentElement;
+      const height = Math.max(
+        body ? body.scrollHeight : 0,
+        body ? body.offsetHeight : 0,
+        html ? html.clientHeight : 0,
+        html ? html.scrollHeight : 0,
+        html ? html.offsetHeight : 0
+      );
+      if (height > 0) {
+        window.parent.postMessage({ type: 'resize-iframe', height }, '*');
+      }
     }
     window.addEventListener('load', sendHeight);
     window.addEventListener('resize', sendHeight);
-    if (window.MutationObserver) {
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(sendHeight);
+      if (document.body) ro.observe(document.body);
+    } else if (window.MutationObserver) {
       const observer = new MutationObserver(sendHeight);
-      observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+      if (document.body) observer.observe(document.body, { subtree: true, childList: true, attributes: true });
     }
+    sendHeight();
   })();
 </script>
 `;
