@@ -111,8 +111,9 @@ export async function renderTemplateHtml(
     try {
       const templateFn = Handlebars.compile(template);
       const rendered = templateFn(data);
+      const baseResetCss = `<style>html, body { margin: 0; padding: 0; min-height: auto !important; height: auto !important; box-sizing: border-box; }</style>`;
       const hasStyleTag = /<style[\s>/]/i.test(rendered);
-      return hasStyleTag ? rendered : `<style>\n${css}\n</style>\n${rendered}`;
+      return hasStyleTag ? `${baseResetCss}\n${rendered}` : `${baseResetCss}\n<style>\n${css}\n</style>\n${rendered}`;
     } catch (err) {
       console.error("Template render error:", err);
       return "<p>Error rendering template</p>";
@@ -198,11 +199,37 @@ export async function runPipeline(
   executionParams: Record<string, any>,
   forceCompileCss = false
 ): Promise<{ html: string; css: string; data: any }> {
-  // Determine initial data
-  let data: any = executionParams;
+  // Parse saved default parameters if present
+  let defaultParams: Record<string, any> = {};
+  if (options.parameters) {
+    if (typeof options.parameters === "string") {
+      try {
+        defaultParams = JSON.parse(options.parameters);
+      } catch {
+        defaultParams = {};
+      }
+    } else if (typeof options.parameters === "object") {
+      defaultParams = options.parameters as Record<string, any>;
+    }
+  }
 
-  if (options.endpoint && options.method !== "NONE") {
-    data = await fetchDataFromExternalEndpoint(options.method, options.endpoint, executionParams);
+  const hasExecutionParams =
+    executionParams && typeof executionParams === "object" && Object.keys(executionParams).length > 0;
+
+  // Determine initial data
+  let data: any;
+
+  if (options.endpoint && options.method && options.method !== "NONE") {
+    const fetchParams = hasExecutionParams ? executionParams : defaultParams;
+    data = await fetchDataFromExternalEndpoint(options.method, options.endpoint, fetchParams);
+  } else {
+    // Static / mock endpoint: merge default sample parameters with executionParams
+    data = { ...defaultParams, ...(executionParams || {}) };
+  }
+
+  // Fallback if data is empty but default parameters are available
+  if ((!data || (typeof data === "object" && Object.keys(data).length === 0)) && Object.keys(defaultParams).length > 0) {
+    data = defaultParams;
   }
 
   // 1. JSONata Transform

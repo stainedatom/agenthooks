@@ -52,10 +52,19 @@ app.post("/api/chat", async (req, res) => {
         : undefined,
     });
 
-    // Ensure all messages have a parts array as required by newer AI SDK versions
-    const formattedMessages = messages.map((m: any) => ({
+    // Keep only the most recent 8 messages to prevent context bloat over 10+ turns
+    const recentMessages = Array.isArray(messages) ? messages.slice(-8) : [];
+
+    // Ensure all messages have a parts array and fallback-strip any html strings
+    const formattedMessages = recentMessages.map((m: any) => ({
       ...m,
-      parts: m.parts || [{ type: "text", text: m.content || "" }],
+      parts: (m.parts || [{ type: "text", text: m.content || "" }]).map((part: any) => {
+        if (part.output && typeof part.output === "object" && "html" in part.output) {
+          const { html, ...restOutput } = part.output;
+          return { ...part, output: restOutput };
+        }
+        return part;
+      }),
     }));
 
     const modelMessages = await convertToModelMessages(formattedMessages);
@@ -75,10 +84,12 @@ app.post("/api/chat", async (req, res) => {
       .join("\n");
 
     const toolsHint = dynamicEndpointsTools.length > 0
-      ? `\n\nYou have access to the following API endpoint tools. Use them when the user asks about data these endpoints provide:\n${endpointDescriptions}`
+      ? `\n\nYou have access to the following API endpoint tools. Use them whenever the user asks for data these endpoints provide:\n${endpointDescriptions}`
       : "";
 
-    const systemMessage = `You are a helpful assistant that can answer questions and execute API endpoints on behalf of the user.${toolsHint}`;
+    const systemMessage = `You are a helpful assistant that executes API endpoints on behalf of the user.${toolsHint}
+
+CRITICAL RULE: Always invoke the corresponding API endpoint tool whenever a user prompt matches an available tool capability. Do NOT summarize or answer from memory or plain text markdown when a matching tool exists. Always call the tool even if similar questions were asked earlier.`;
 
     const result = streamText({
       model: ollama(config.aiModel),
