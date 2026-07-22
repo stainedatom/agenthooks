@@ -103,11 +103,11 @@ export default function ChatPage() {
     <div className="flex flex-col h-dvh bg-white font-sans">
       {/* ── Header ────────────────────────────────────────────── */}
       <header className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white shrink-0 shadow-sm z-10">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
           <Bot size={22} />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-gray-900 leading-tight">AI Assistant</h1>
+          <h1 className="text-lg font-bold text-gray-900 leading-tight">AgentHooks</h1>
         </div>
         {isLoading && (
           <button
@@ -125,14 +125,14 @@ export default function ChatPage() {
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white mb-6 shadow-lg shadow-blue-500/20">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white mb-6 shadow-lg shadow-blue-500/20">
                 <Bot size={32} />
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">
-                How can I help you today?
+                Welcome to AgentHooks
               </h2>
             <p className="text-sm text-gray-400 max-w-sm">
-              Send a message below and the AI will respond in real-time.
+              Ask questions, execute API endpoints, and use interactive widgets.
             </p>
             </div>
           )}
