@@ -169,6 +169,7 @@ export default function ChatPage() {
 
                 {hasTemplateWidget ? (
                   <div className="flex-1 w-full my-1 animate-in fade-in duration-150 max-w-[90%]">
+                     <div className="w-full max-w-[500px] mr-auto"> {/* Restrict and left-align the iframe container */}
                     <iframe
                       srcDoc={templateWidgetPart.output.html}
                       sandbox="allow-scripts allow-forms"
@@ -176,6 +177,7 @@ export default function ChatPage() {
                       style={{ height: "auto" }}
                       title={`Widget: ${templateWidgetPart.toolName}`}
                     />
+                    </div>
                   </div>
                 ) : (
                   <div

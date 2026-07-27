@@ -13,7 +13,7 @@ import { getDynamicEndpointsTools } from "./tools/dynamicTools";
 const app = express();
 
 // Middleware
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 
 // CORS

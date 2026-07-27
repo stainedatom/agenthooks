@@ -199,7 +199,7 @@ export default function EndpointForm({
         onEnableChange={(val) => update("enableTemplate", val)}
         value={values.template}
         onValueChange={(val) => update("template", val)}
-        placeholder={`<div class="bg-white rounded-xl p-6 shadow-sm border border-gray-150">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>`}
+        placeholder={`<div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200 text-left">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>`}
         checkboxLabel="Enable Template"
         minHeightClass="min-h-[200px]"
         textareaClassName="px-3 py-2 border border-gray-300 rounded-lg text-xs outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition-all font-mono"
