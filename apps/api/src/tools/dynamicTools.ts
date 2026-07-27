@@ -1,22 +1,44 @@
 import { tool, jsonSchema } from "ai";
+import { ObjectId } from "mongodb";
 import mongoclient from "../dbclient";
 import { runPipeline } from "../services/pipeline";
 
 /**
- * Fetches all endpoint documents from the agenthooks database and
- * converts each one into an AI SDK tool that the LLM can invoke.
+ * Fetches endpoint documents from the agenthooks database for a given user
+ * and converts each one into an AI SDK tool that the LLM can invoke.
+ *
+ * If `collectionId` is provided, only endpoints belonging to that collection
+ * are loaded. Otherwise, all endpoints for the user are loaded.
  *
  * Each tool's `description` is set to the endpoint's `description` field,
  * so the LLM can match natural language input to the right endpoint.
  * The `inputSchema` is derived from the endpoint's `parameters` field.
  * The `execute` function runs the full pipeline (fetch → transform → render).
  */
-export async function getDynamicEndpointsTools() {
+export async function getDynamicEndpointsTools(userId: string, collectionId?: string) {
   try {
     const db = mongoclient.db("agenthooks");
     const collection = db.collection("endpoints");
 
-    const endpoints = await collection.find({}).toArray();
+    // Build query filter — always scope to the user
+    const query: any = { userId };
+
+    // If a collection is specified, resolve its endpointIds and filter further
+    if (collectionId) {
+      const collectionsColl = db.collection("endpoint_collections");
+      const colDoc = await collectionsColl.findOne({
+        _id: new ObjectId(collectionId),
+        userId,
+      });
+      if (colDoc && Array.isArray(colDoc.endpointIds) && colDoc.endpointIds.length > 0) {
+        query._id = { $in: colDoc.endpointIds.map((id: any) => new ObjectId(id)) };
+      } else {
+        // Collection exists but has no endpoints — return empty
+        return [];
+      }
+    }
+
+    const endpoints = await collection.find(query).toArray();
 
     const dynamicTools = endpoints.map((endpointDoc) => {
       const toolName = `endpoint_${endpointDoc._id.toString()}`;

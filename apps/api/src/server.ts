@@ -9,6 +9,7 @@ import collectionRoutes from "./routes/collections";
 import { streamText, pipeUIMessageStreamToResponse, convertToModelMessages, stepCountIs } from "ai";
 import { createOllama } from "ollama-ai-provider-v2";
 import { getDynamicEndpointsTools } from "./tools/dynamicTools";
+import { authenticateToken } from "./middleware/auth";
 
 const app = express();
 
@@ -35,13 +36,17 @@ app.get("/api/health", (_req, res) => {
 });
 
 // Chat Endpoint
-app.post("/api/chat", async (req, res) => {
+app.post("/api/chat", authenticateToken, async (req, res) => {
   try {
-    const { messages } = req.body;
+    const { messages, collectionId } = req.body;
+    const userId = req.user;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: "Messages array is required" });
     }
+
+    // userId is guaranteed by authenticateToken middleware
+    const currentUserId: string = userId as string;
 
     const ollama = createOllama({
       baseURL: config.ollamaBaseUrl,
@@ -69,8 +74,8 @@ app.post("/api/chat", async (req, res) => {
 
     const modelMessages = await convertToModelMessages(formattedMessages);
 
-    // Load dynamic endpoint tools from the database
-    const dynamicEndpointsTools = await getDynamicEndpointsTools();
+    // Load dynamic endpoint tools from the database, scoped to user and optionally a collection
+    const dynamicEndpointsTools = await getDynamicEndpointsTools(currentUserId, collectionId || undefined);
 
     // Convert the registry array into a tools object for streamText
     const tools = dynamicEndpointsTools.reduce((acc, item) => {
