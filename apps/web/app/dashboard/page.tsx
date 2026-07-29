@@ -26,6 +26,7 @@ import PreviewPanel from "../components/PreviewPanel";
 import StudioHeaderActions from "../components/StudioHeaderActions";
 import RunModal from "../components/RunModal";
 import MethodBadge from "../components/MethodBadge";
+import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import { Folder, Edit, Trash2, X, Plus, MessageSquare, LogOut } from "lucide-react";
 
 export default function DashboardPage() {
@@ -72,6 +73,12 @@ export default function DashboardPage() {
   const [execResult, setExecResult] = useState<ExecuteResult | null>(null);
   const [execLoading, setExecLoading] = useState(false);
   const [execError, setExecError] = useState("");
+
+  // Deletion Modal state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteConfirmLoading, setDeleteConfirmLoading] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+  const [deleteItemType, setDeleteItemType] = useState<"endpoint" | "collection" | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -160,13 +167,9 @@ export default function DashboardPage() {
   }
 
   async function handleDeleteCollection(id: string) {
-    if (!confirm("Delete this collection?")) return;
-    try {
-      await deleteCollection(id);
-      setCollections(collections.filter((c) => c._id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete collection");
-    }
+    setDeleteItemId(id);
+    setDeleteItemType("collection");
+    setDeleteConfirmOpen(true);
   }
 
   function resetCollectionForm() {
@@ -378,12 +381,37 @@ export default function DashboardPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this endpoint?")) return;
+    setDeleteItemId(id);
+    setDeleteItemType("endpoint");
+    setDeleteConfirmOpen(true);
+  }
+
+  async function executeConfirmDelete() {
+    if (!deleteItemId || !deleteItemType) return;
+    setDeleteConfirmLoading(true);
+    setError("");
     try {
-      await deleteEndpoint(id);
-      setEndpoints(endpoints.filter((ep) => ep._id !== id));
+      if (deleteItemType === "endpoint") {
+        await deleteEndpoint(deleteItemId);
+        setEndpoints(endpoints.filter((ep) => ep._id !== deleteItemId));
+        // Remove deleted endpoint from any local collection lists
+        setCollections(
+          collections.map((col) => ({
+            ...col,
+            endpointIds: col.endpointIds ? col.endpointIds.filter((id) => id !== deleteItemId) : [],
+          }))
+        );
+      } else {
+        await deleteCollection(deleteItemId);
+        setCollections(collections.filter((c) => c._id !== deleteItemId));
+      }
+      setDeleteConfirmOpen(false);
+      setDeleteItemId(null);
+      setDeleteItemType(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete");
+      setError(err instanceof Error ? err.message : `Failed to delete ${deleteItemType}`);
+    } finally {
+      setDeleteConfirmLoading(false);
     }
   }
 
@@ -884,6 +912,23 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+      {/* Deletion Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteConfirmOpen}
+        title={deleteItemType === "endpoint" ? "Delete Endpoint" : "Delete Collection"}
+        message={
+          deleteItemType === "endpoint"
+            ? "Are you sure you want to delete this endpoint? This will also remove it from any collections."
+            : "Are you sure you want to delete this collection? The endpoints inside it will not be deleted."
+        }
+        onConfirm={executeConfirmDelete}
+        onCancel={() => {
+          setDeleteConfirmOpen(false);
+          setDeleteItemId(null);
+          setDeleteItemType(null);
+        }}
+        loading={deleteConfirmLoading}
+      />
     </div>
   );
 }

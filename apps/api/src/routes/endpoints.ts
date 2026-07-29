@@ -195,8 +195,9 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
     const db = mongoclient.db("agenthooks");
     const collection = db.collection("endpoints");
 
+    const endpointId = new ObjectId(req.params.id as string);
     const result = await collection.deleteOne({
-      _id: new ObjectId(req.params.id as string),
+      _id: endpointId,
       userId: req.user,
     });
 
@@ -204,6 +205,13 @@ router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
       res.status(404).json({ error: "NotFound", message: "Endpoint not found" });
       return;
     }
+
+    // Clean up endpoint references from all collections of this user
+    const collectionsColl = db.collection("endpoint_collections");
+    await collectionsColl.updateMany(
+      { userId: req.user },
+      { $pull: { endpointIds: endpointId } as any }
+    );
 
     res.json({ message: "Endpoint deleted" });
   } catch (err) {
