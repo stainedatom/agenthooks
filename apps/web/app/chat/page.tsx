@@ -63,6 +63,12 @@ export default function ChatPage() {
       try {
         const cols = await listCollections();
         setCollections(cols);
+        const firstCollection = cols[0];
+        if (firstCollection) {
+          setSelectedCollectionId(firstCollection._id);
+        } else {
+          setSelectedCollectionId("");
+        }
       } catch {
         // Not authenticated or error — collections just won't show
       } finally {
@@ -139,7 +145,7 @@ export default function ChatPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-bold text-gray-900 leading-tight">AgentHooks</h1>
           {/* Collection dropdown */}
-          {!collectionsLoading && (
+          {!collectionsLoading && collections.length > 0 && (
             <div className="relative">
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -147,26 +153,13 @@ export default function ChatPage() {
               >
                 {selectedCollectionId
                   ? collections.find(c => c._id === selectedCollectionId)?.name || "Collection"
-                  : "All Endpoints"}
+                  : "Select collection"}
                 <ChevronDown size={14} className={`transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
               </button>
               {dropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setDropdownOpen(false)} />
                   <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-20 py-1.5 max-h-60 overflow-y-auto">
-                    <button
-                      onClick={() => { setSelectedCollectionId(""); setDropdownOpen(false); }}
-                      className={`w-full text-left px-3.5 py-2 text-xs font-medium transition-colors ${
-                        !selectedCollectionId
-                          ? "bg-blue-50 text-blue-700"
-                          : "text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      All Endpoints
-                    </button>
-                    {collections.length > 0 && (
-                      <div className="border-t border-gray-100 my-1" />
-                    )}
                     {collections.map((col) => (
                       <button
                         key={col._id}
