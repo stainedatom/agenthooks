@@ -189,6 +189,49 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// POST /api/endpoints/batch-delete — Delete multiple endpoints
+router.post("/batch-delete", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: "BadRequest", message: "ids array is required" });
+      return;
+    }
+
+    // Filter out invalid ObjectIds
+    const validIds = ids.filter((id) => typeof id === "string" && ObjectId.isValid(id));
+    if (validIds.length === 0) {
+      res.status(400).json({ error: "BadRequest", message: "No valid endpoint IDs provided" });
+      return;
+    }
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const db = mongoclient.db("agenthooks");
+    const collection = db.collection("endpoints");
+
+    const result = await collection.deleteMany({
+      _id: { $in: objectIds },
+      userId: req.user,
+    });
+
+    if (result.deletedCount > 0) {
+      // Clean up endpoint references from all collections of this user
+      const collectionsColl = db.collection("endpoint_collections");
+      await collectionsColl.updateMany(
+        { userId: req.user },
+        { $pull: { endpointIds: { $in: objectIds } } as any }
+      );
+    }
+
+    res.json({ deletedCount: result.deletedCount });
+  } catch (err) {
+    console.error("Batch delete endpoints error:", err);
+    res.status(500).json({ error: "InternalServerError", message: "Something went wrong" });
+  }
+});
+
 // DELETE /api/endpoints/:id — Delete endpoint
 router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   try {

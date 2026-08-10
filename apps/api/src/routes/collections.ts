@@ -184,6 +184,79 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// POST /api/collections/:id/add-endpoints — Add endpoints to a collection
+router.post("/:id/add-endpoints", async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!ObjectId.isValid(req.params.id as string)) {
+      res.status(400).json({ error: "BadRequest", message: "Invalid collection ID format" });
+      return;
+    }
+
+    const { endpointIds } = req.body;
+
+    if (!Array.isArray(endpointIds) || endpointIds.length === 0) {
+      res.status(400).json({ error: "BadRequest", message: "endpointIds array is required" });
+      return;
+    }
+
+    // Filter out invalid ObjectIds
+    const validIds = endpointIds.filter((id) => typeof id === "string" && ObjectId.isValid(id));
+    if (validIds.length === 0) {
+      res.status(400).json({ error: "BadRequest", message: "No valid endpoint IDs provided" });
+      return;
+    }
+
+    const objectIds = validIds.map((id) => new ObjectId(id));
+
+    const db = mongoclient.db("agenthooks");
+    const collection = db.collection("endpoint_collections");
+
+    const collectionId = new ObjectId(req.params.id as string);
+    const existingDoc = await collection.findOne({
+      _id: collectionId,
+      userId: req.user,
+    });
+
+    if (!existingDoc) {
+      res.status(404).json({ error: "NotFound", message: "Collection not found" });
+      return;
+    }
+
+    // Security check: verify all endpoint IDs belong to this user
+    const endpointsColl = db.collection("endpoints");
+    const ownedEndpoints = await endpointsColl
+      .find({ _id: { $in: objectIds }, userId: req.user })
+      .project({ _id: 1 })
+      .toArray();
+
+    if (ownedEndpoints.length === 0) {
+      res.status(400).json({ error: "BadRequest", message: "No valid endpoints found for this user" });
+      return;
+    }
+
+    const ownedObjectIds = ownedEndpoints.map((ep) => ep._id);
+
+    // Add endpoints to the collection without duplicating existing ones
+    await collection.updateOne(
+      { _id: collectionId, userId: req.user },
+      { $addToSet: { endpointIds: { $each: ownedObjectIds } } as any, $set: { updatedAt: new Date() } }
+    );
+
+    const updatedDoc = await collection.findOne({ _id: collectionId });
+
+    res.json({
+      ...updatedDoc,
+      _id: updatedDoc!._id.toString(),
+      endpointIds: Array.isArray(updatedDoc!.endpointIds)
+        ? updatedDoc!.endpointIds.map((id: any) => id.toString())
+        : [],
+    });
+  } catch (err) {
+    console.error("Add endpoints to collection error:", err);
+    res.status(500).json({ error: "InternalServerError", message: "Something went wrong" });
+  }
+});
+
 // DELETE /api/collections/:id — Delete collection
 router.delete("/:id", async (req: Request, res: Response): Promise<void> => {
   try {

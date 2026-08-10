@@ -224,6 +224,13 @@ export async function deleteEndpoint(id: string): Promise<void> {
   });
 }
 
+export async function deleteEndpoints(ids: string[]): Promise<{ deletedCount: number }> {
+  return request<{ deletedCount: number }>("/api/endpoints/batch-delete", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export async function executeEndpoint(
   id: string,
   params?: Record<string, string>
@@ -294,6 +301,16 @@ export async function updateCollection(
 export async function deleteCollection(id: string): Promise<void> {
   await request<{ message: string }>(`/api/collections/${id}`, {
     method: "DELETE",
+  });
+}
+
+export async function addEndpointsToCollection(
+  collectionId: string,
+  endpointIds: string[]
+): Promise<EndpointCollection> {
+  return request<EndpointCollection>(`/api/collections/${collectionId}/add-endpoints`, {
+    method: "POST",
+    body: JSON.stringify({ endpointIds }),
   });
 }
 
