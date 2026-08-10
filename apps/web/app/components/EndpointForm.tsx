@@ -1,5 +1,7 @@
 "use client";
 
+import CodeEditor from "./CodeEditor";
+
 export interface EndpointFormValues {
   description: string;
   method: string;
@@ -144,15 +146,11 @@ export default function EndpointForm({
             {values.method === "NONE" ? "Mock Input Data" : "Parameters"}{" "}
             <span className="text-gray-400 font-normal text-xs">(Optional JSON)</span>
           </label>
-          <textarea
+          <CodeEditor
             value={values.parameters}
-            onChange={(e) => update("parameters", e.target.value)}
-            className="px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono min-h-[100px] outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner focus:ring-1 focus:ring-gray-400"
-            placeholder={
-              values.method === "NONE"
-                ? '{\n  "terms": 7\n}'
-                : '{\n  "limit": 10,\n  "status": "active"\n}'
-            }
+            onChange={(val) => update("parameters", val)}
+            language="json"
+            height="120px"
           />
           <p className="text-xxs text-gray-400 mt-1">
             {values.method === "NONE"
@@ -173,7 +171,8 @@ export default function EndpointForm({
         onValueChange={(val) => update("jsonataCode", val)}
         placeholder={`/* JSONata query to transform input JSON */\n{\n  "title": title,\n  "items": [items]\n}`}
         checkboxLabel="Enable JSONata"
-        minHeightClass="min-h-[120px]"
+        language="json"
+        height="120px"
       />
 
       <hr className="border-gray-150" />
@@ -187,7 +186,8 @@ export default function EndpointForm({
         onValueChange={(val) => update("jsonlogicCode", val)}
         placeholder={`/* JSON Logic rule validation or transformation */\n{\n  "if": [\n    { ">": [{ "var": "temp" }, 25] },\n    "Warm",\n    "Cool"\n  ]\n}`}
         checkboxLabel="Enable JSON Logic"
-        minHeightClass="min-h-[120px]"
+        language="json"
+        height="120px"
       />
 
       <hr className="border-gray-150" />
@@ -201,8 +201,8 @@ export default function EndpointForm({
         onValueChange={(val) => update("template", val)}
         placeholder={`<div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200 text-left">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>`}
         checkboxLabel="Enable Template"
-        minHeightClass="min-h-[200px]"
-        textareaClassName="px-3 py-2 border border-gray-300 rounded-lg text-xs outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition-all font-mono"
+        language="html"
+        height="200px"
       />
 
       <hr className="border-gray-150" />
@@ -225,7 +225,8 @@ if (btn) {
   });
 }`}
         checkboxLabel="Enable JavaScript"
-        minHeightClass="min-h-[160px]"
+        language="javascript"
+        height="160px"
       />
     </form>
   );
@@ -239,8 +240,8 @@ interface CollapsibleCodeSectionProps {
   onValueChange: (value: string) => void;
   placeholder: string;
   checkboxLabel: string;
-  minHeightClass: string;
-  textareaClassName?: string;
+  language: string;
+  height: string;
 }
 
 function CollapsibleCodeSection({
@@ -251,8 +252,8 @@ function CollapsibleCodeSection({
   onValueChange,
   placeholder,
   checkboxLabel,
-  minHeightClass,
-  textareaClassName = "px-3 py-2.5 border border-gray-200 bg-gray-50 text-gray-900 rounded-lg text-xs font-mono outline-none focus:border-gray-400 focus:bg-white transition-all shadow-inner focus:ring-1 focus:ring-gray-400",
+  language,
+  height,
 }: CollapsibleCodeSectionProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -272,11 +273,11 @@ function CollapsibleCodeSection({
       </div>
       {enabled && (
         <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
-          <textarea
+          <CodeEditor
             value={value}
-            onChange={(e) => onValueChange(e.target.value)}
-            className={`${textareaClassName} ${minHeightClass}`}
-            placeholder={placeholder}
+            onChange={onValueChange}
+            language={language}
+            height={height}
           />
         </div>
       )}
