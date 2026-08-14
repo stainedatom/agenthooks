@@ -5,6 +5,23 @@ import jsonLogic from "json-logic-js";
 import { compileTailwind } from "./compile";
 import { generateResponseInNaturalLanguage } from "./ResponseInNaturalLanguage";
 
+// Register custom Handlebars helpers
+Handlebars.registerHelper("firstLetter", (str) => (typeof str === "string" && str.length > 0 ? str.charAt(0).toUpperCase() : ""));
+Handlebars.registerHelper("upper", (str) => (typeof str === "string" ? str.toUpperCase() : ""));
+Handlebars.registerHelper("lower", (str) => (typeof str === "string" ? str.toLowerCase() : ""));
+Handlebars.registerHelper("eq", (a, b) => a === b);
+Handlebars.registerHelper("ne", (a, b) => a !== b);
+Handlebars.registerHelper("gt", (a, b) => a > b);
+Handlebars.registerHelper("gte", (a, b) => a >= b);
+Handlebars.registerHelper("lt", (a, b) => a < b);
+Handlebars.registerHelper("lte", (a, b) => a <= b);
+Handlebars.registerHelper("and", (...args) => args.slice(0, -1).every(Boolean));
+Handlebars.registerHelper("or", (...args) => args.slice(0, -1).some(Boolean));
+Handlebars.registerHelper("not", (val) => !val);
+Handlebars.registerHelper("formatDate", (val) => (val ? new Date(val).toLocaleDateString() : ""));
+Handlebars.registerHelper("json", (val) => JSON.stringify(val, null, 2));
+Handlebars.registerHelper("default", (val, fallback) => val || fallback);
+
 export interface PipelineOptions {
   method: string;
   endpoint?: string;
@@ -114,9 +131,14 @@ export async function renderTemplateHtml(
       const baseResetCss = `<style>html, body { margin: 0; padding: 0; min-height: auto !important; height: auto !important; box-sizing: border-box; }</style>`;
       const hasStyleTag = /<style[\s>/]/i.test(rendered);
       return hasStyleTag ? `${baseResetCss}\n${rendered}` : `${baseResetCss}\n<style>\n${css}\n</style>\n${rendered}`;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Template render error:", err);
-      return "<p>Error rendering template</p>";
+      const errMsg = err instanceof Error ? err.message : String(err);
+      return `<div style="padding: 16px; background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; border-radius: 12px; font-family: system-ui, -apple-system, sans-serif; font-size: 13px;">
+  <strong style="display: block; margin-bottom: 4px; font-size: 14px; font-weight: 600;">Handlebars Template Render Error</strong>
+  <p style="margin: 0 0 8px 0; color: #7f1d1d;">The template contains a syntax error or invalid expression:</p>
+  <pre style="margin: 0; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12px; background: rgba(0,0,0,0.04); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.06);">${errMsg}</pre>
+</div>`;
     }
   }
   // No template — use natural language generator

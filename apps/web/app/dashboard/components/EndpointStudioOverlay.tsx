@@ -24,10 +24,12 @@ export function EndpointStudioOverlay({
     setError,
     creating,
     updating,
+    generatingTemplate,
     previewHtml,
     previewLoading,
     previewError,
     runPreview,
+    generateAiTemplate,
     close,
     handleCreateSubmit,
     handleUpdateSubmit,
@@ -89,6 +91,8 @@ export function EndpointStudioOverlay({
             onSubmit={onSubmit}
             error={error}
             onClearError={() => setError("")}
+            onGenerateAiTemplate={generateAiTemplate}
+            generatingAiTemplate={generatingTemplate}
           />
         </div>
         <PreviewPanel

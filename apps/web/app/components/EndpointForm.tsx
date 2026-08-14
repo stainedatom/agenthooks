@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import CodeEditor from "./CodeEditor";
 
 export interface EndpointFormValues {
@@ -40,6 +41,8 @@ interface EndpointFormProps {
   onSubmit: (e: React.FormEvent) => void;
   error: string;
   onClearError: () => void;
+  onGenerateAiTemplate?: () => void;
+  generatingAiTemplate?: boolean;
 }
 
 const METHOD_ACTIVE_STYLES: Record<string, string> = {
@@ -58,6 +61,8 @@ export default function EndpointForm({
   onSubmit,
   error,
   onClearError,
+  onGenerateAiTemplate,
+  generatingAiTemplate,
 }: EndpointFormProps) {
   /** Partial-update helper — keeps all other fields intact */
   function update<K extends keyof EndpointFormValues>(
@@ -203,6 +208,8 @@ export default function EndpointForm({
         checkboxLabel="Enable Template"
         language="html"
         height="200px"
+        onAiGenerate={onGenerateAiTemplate}
+        aiLoading={generatingAiTemplate}
       />
 
       <hr className="border-gray-150" />
@@ -242,6 +249,8 @@ interface CollapsibleCodeSectionProps {
   checkboxLabel: string;
   language: string;
   height: string;
+  onAiGenerate?: () => void;
+  aiLoading?: boolean;
 }
 
 function CollapsibleCodeSection({
@@ -254,6 +263,8 @@ function CollapsibleCodeSection({
   checkboxLabel,
   language,
   height,
+  onAiGenerate,
+  aiLoading,
 }: CollapsibleCodeSectionProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -261,15 +272,38 @@ function CollapsibleCodeSection({
         <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">
           {title}
         </span>
-        <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => onEnableChange(e.target.checked)}
-            className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
-          />
-          {checkboxLabel}
-        </label>
+        <div className="flex items-center gap-3">
+          {onAiGenerate && (
+            <button
+              type="button"
+              onClick={onAiGenerate}
+              disabled={aiLoading}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg cursor-pointer transition-all shadow-2xs disabled:opacity-50"
+              title="Generate a Handlebars UI template based on your description and mock JSON data"
+            >
+              {aiLoading ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={13} className="text-purple-600" />
+                  <span>Generate with AI</span>
+                </>
+              )}
+            </button>
+          )}
+          <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => onEnableChange(e.target.checked)}
+              className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+            />
+            {checkboxLabel}
+          </label>
+        </div>
       </div>
       {enabled && (
         <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">

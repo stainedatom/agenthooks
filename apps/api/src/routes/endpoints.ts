@@ -10,6 +10,7 @@ import { compileTailwind } from "../services/compile";
 import {
   runPipeline,
 } from "../services/pipeline";
+import { generateHandlebarsTemplate } from "../services/templateGenerator";
 
 const router = Router();
 
@@ -424,6 +425,33 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
   } catch (err) {
     console.error("Update endpoint error:", err);
     res.status(500).json({ error: "InternalServerError", message: "Something went wrong" });
+  }
+});
+
+// POST /api/endpoints/generate-template — Generate Handlebars UI template using AI
+router.post("/generate-template", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { description, parameters } = req.body;
+
+    if (!description) {
+      res.status(400).json({ error: "BadRequest", message: "description is required to generate a template" });
+      return;
+    }
+
+    let parsedParams: unknown = parameters || {};
+    if (typeof parameters === "string" && parameters.trim()) {
+      try {
+        parsedParams = JSON.parse(parameters);
+      } catch {
+        parsedParams = {};
+      }
+    }
+
+    const template = await generateHandlebarsTemplate(description, parsedParams);
+    res.json({ template });
+  } catch (err: any) {
+    console.error("Generate template route error:", err);
+    res.status(500).json({ error: "InternalServerError", message: err.message || "Failed to generate template" });
   }
 });
 

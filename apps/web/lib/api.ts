@@ -257,6 +257,16 @@ export async function previewEndpoint(data: {
   });
 }
 
+export async function generateTemplate(data: {
+  description: string;
+  parameters?: Record<string, unknown> | string;
+}): Promise<{ template: string }> {
+  return request<{ template: string }>("/api/endpoints/generate-template", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // ─── Collections ─────────────────────────────────────────
 
 export interface EndpointCollection {

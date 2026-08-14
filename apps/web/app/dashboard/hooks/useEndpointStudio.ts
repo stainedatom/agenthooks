@@ -3,6 +3,7 @@ import {
   createEndpoint,
   updateEndpoint,
   previewEndpoint,
+  generateTemplate,
   Endpoint,
 } from "../../../lib/api";
 import { EndpointFormValues, defaultFormValues } from "../../components/EndpointForm";
@@ -74,6 +75,7 @@ export function useEndpointStudio() {
   const [formValues, setFormValues] = useState<EndpointFormValues>(defaultFormValues);
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [generatingTemplate, setGeneratingTemplate] = useState(false);
   const [error, setError] = useState("");
 
   const [previewHtml, setPreviewHtml] = useState("");
@@ -208,6 +210,32 @@ export function useEndpointStudio() {
     [editId, formValues, close]
   );
 
+  const generateAiTemplate = useCallback(async () => {
+    if (!formValues.description.trim()) {
+      setError("Description is required to generate a template");
+      return;
+    }
+    setGeneratingTemplate(true);
+    setError("");
+    try {
+      const res = await generateTemplate({
+        description: formValues.description,
+        parameters: formValues.parameters,
+      });
+      const updatedValues = {
+        ...formValues,
+        enableTemplate: true,
+        template: res.template,
+      };
+      setFormValues(updatedValues);
+      runPreview(updatedValues);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate AI template");
+    } finally {
+      setGeneratingTemplate(false);
+    }
+  }, [formValues, runPreview]);
+
   return {
     mode,
     editId,
@@ -217,10 +245,12 @@ export function useEndpointStudio() {
     setError,
     creating,
     updating,
+    generatingTemplate,
     previewHtml,
     previewLoading,
     previewError,
     runPreview: () => runPreview(formValues),
+    generateAiTemplate,
     openCreate,
     openEdit,
     close,
