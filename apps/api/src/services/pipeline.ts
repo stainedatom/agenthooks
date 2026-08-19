@@ -200,7 +200,25 @@ export function injectClientScripts(html: string, data: any, javascriptCode?: st
 </script>
 `;
 
-  return `${html}\n${dataScript}\n${clientJavascriptScript}\n${autoResizeScript}`;
+  const lucideScript = `
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  (function() {
+    function initLucide() {
+      if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initLucide);
+    } else {
+      initLucide();
+    }
+  })();
+</script>
+`;
+
+  return `${html}\n${dataScript}\n${clientJavascriptScript}\n${autoResizeScript}\n${lucideScript}`;
 }
 
 /**

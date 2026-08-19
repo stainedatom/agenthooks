@@ -17,8 +17,11 @@ export function generateFallbackHandlebarsTemplate(
 ): string {
   if (!sampleData || typeof sampleData !== "object") {
     return `<div class="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-  <h3 class="text-sm font-bold text-gray-900 mb-1">${description || "Data Overview"}</h3>
-  <p class="text-xs text-gray-600">{{this}}</p>
+  <div class="flex items-center gap-2 mb-2">
+    <i data-lucide="info" class="w-4 h-4 text-indigo-500"></i>
+    <h3 class="text-sm font-bold text-gray-900">${description || "Data Overview"}</h3>
+  </div>
+  <p class="text-xs text-gray-600 font-mono bg-gray-50 p-2 rounded border border-gray-100">{{this}}</p>
 </div>`;
   }
 
@@ -30,8 +33,12 @@ export function generateFallbackHandlebarsTemplate(
       const tableCells = keys.map((k) => `<td class="px-3 py-2 text-xs text-gray-700 truncate max-w-[150px]">{{${k}}}</td>`).join("\n        ");
 
       return `<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-  <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
-    <h3 class="text-sm font-bold text-gray-900">${description || "Data List"}</h3>
+  <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <i data-lucide="list" class="w-4 h-4 text-gray-500"></i>
+      <h3 class="text-sm font-bold text-gray-900">${description || "Data List"}</h3>
+    </div>
+    <span class="text-xxs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">List View</span>
   </div>
   <div class="overflow-x-auto">
     <table class="min-w-full divide-y divide-gray-100">
@@ -42,7 +49,7 @@ export function generateFallbackHandlebarsTemplate(
       </thead>
       <tbody class="divide-y divide-gray-100 bg-white">
         {{#each this}}
-        <tr class="hover:bg-gray-50/50">
+        <tr class="hover:bg-gray-50/50 transition-colors">
           ${tableCells}
         </tr>
         {{/each}}
@@ -53,10 +60,16 @@ export function generateFallbackHandlebarsTemplate(
     }
 
     return `<div class="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
-  <h3 class="text-sm font-bold text-gray-900 mb-3">${description || "Items"}</h3>
+  <div class="flex items-center gap-2 mb-3">
+    <i data-lucide="layers" class="w-4 h-4 text-gray-500"></i>
+    <h3 class="text-sm font-bold text-gray-900">${description || "Items"}</h3>
+  </div>
   <ul class="space-y-1.5">
     {{#each this}}
-    <li class="text-xs text-gray-700 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">{{this}}</li>
+    <li class="text-xs text-gray-700 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 flex items-center gap-2">
+      <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-500 shrink-0"></i>
+      <span>{{this}}</span>
+    </li>
     {{/each}}
   </ul>
 </div>`;
@@ -74,7 +87,10 @@ export function generateFallbackHandlebarsTemplate(
     .join("\n");
 
   return `<div class="p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
-  <h3 class="text-sm font-bold text-gray-900 mb-3">${description || "Summary"}</h3>
+  <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+    <i data-lucide="activity" class="w-4 h-4 text-indigo-500"></i>
+    <h3 class="text-sm font-bold text-gray-900">${description || "Summary"}</h3>
+  </div>
   <div class="space-y-1">
 ${fields}
   </div>
@@ -98,12 +114,13 @@ Sample Mock Data JSON:
 ${jsonSample}
 
 CRITICAL RULES:
-1. Output ONLY the raw Handlebars HTML code block — NO markdown fences (no \`\`\`html), NO preamble, NO explanation.
+1. Output ONLY the raw Handlebars HTML code block — NO markdown code fences (no \`\`\`html), NO preamble, NO explanation text.
 2. Do NOT include <html>, <head>, or <body> tags — return only the inner UI component container (e.g., <div class="...">...</div>).
-3. Use standard Handlebars syntax (e.g. {{key}}, {{#each list}}...{{/each}}, {{#if condition}}...{{/if}}).
-4. Style with clean, modern Tailwind CSS classes (class="...", NOT className="..."). Use rounded-xl, border, shadow-sm, flex, grid, modern typography, muted badges, subtle hover states.
-5. Ensure all data fields present in the sample JSON are tastefully presented.
-6. Every block helper like {{#if}} or {{#each}} MUST have a matching {{/if}} or {{/each}} closing tag. Do NOT use non-standard helpers.`;
+3. DATA-FIRST RULE: Base ALL Handlebars expressions (e.g. {{key}}, {{#each list}}...{{/each}}) STRICTLY on the property keys present in the Sample Mock Data JSON. Do NOT invent or reference any non-existent property names.
+4. DISPLAY-ONLY RULE: This component is a READ-ONLY data display widget for API responses. Focus 100% on formatting, visualizing, and presenting the data cleanly (cards, metric grids, tables, status badges). DO NOT generate mock mutation action buttons like "Edit", "Delete", "Remove", "Save", or "Update".
+5. LUCIDE ICONOGRAPHY: Use Lucide icons with clean <i data-lucide="icon-name" class="w-4 h-4 text-gray-500"></i> tags (e.g. data-lucide="user", "clock", "check-circle", "activity", "trending-up", "mail", "database"). DO NOT write raw inline <svg> or <path d="..."> strings.
+6. TAILWIND CSS: Use class="..." (NOT className="..."). Style with clean, modern Tailwind CSS classes (rounded-xl, border, shadow-sm, flex, grid, modern typography, muted badges, subtle hover states).
+7. Handlebars block helpers like {{#if}} or {{#each}} MUST have matching {{/if}} or {{/each}} closing tags.`;
 
   try {
     const { text } = await generateText({
