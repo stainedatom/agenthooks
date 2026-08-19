@@ -9,6 +9,7 @@ import { authenticateToken } from "../middleware/auth";
 import { compileTailwind } from "../services/compile";
 import {
   runPipeline,
+  fetchDataFromExternalEndpoint,
 } from "../services/pipeline";
 import { generateHandlebarsTemplate } from "../services/templateGenerator";
 
@@ -431,23 +432,39 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
 // POST /api/endpoints/generate-template — Generate Handlebars UI template using AI
 router.post("/generate-template", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, parameters } = req.body;
+    const { description, method, endpoint, parameters } = req.body;
 
     if (!description) {
       res.status(400).json({ error: "BadRequest", message: "description is required to generate a template" });
       return;
     }
 
-    let parsedParams: unknown = parameters || {};
-    if (typeof parameters === "string" && parameters.trim()) {
-      try {
-        parsedParams = JSON.parse(parameters);
-      } catch {
-        parsedParams = {};
+    let parsedParams: Record<string, any> = {};
+    if (parameters) {
+      if (typeof parameters === "string" && parameters.trim()) {
+        try {
+          parsedParams = JSON.parse(parameters);
+        } catch {
+          parsedParams = {};
+        }
+      } else if (typeof parameters === "object") {
+        parsedParams = parameters;
       }
     }
 
-    const template = await generateHandlebarsTemplate(description, parsedParams);
+    let sampleData: unknown = parsedParams;
+
+    // Fetch live API payload if endpoint and method are provided
+    if (endpoint && method && method !== "NONE") {
+      try {
+        sampleData = await fetchDataFromExternalEndpoint(method, endpoint, parsedParams);
+      } catch (fetchErr: any) {
+        console.warn("External API fetch failed during template generation, falling back to parameters:", fetchErr?.message);
+        sampleData = parsedParams;
+      }
+    }
+
+    const template = await generateHandlebarsTemplate(description, sampleData);
     res.json({ template });
   } catch (err: any) {
     console.error("Generate template route error:", err);

@@ -220,6 +220,8 @@ export function useEndpointStudio() {
     try {
       const res = await generateTemplate({
         description: formValues.description,
+        method: formValues.method,
+        endpoint: formValues.endpoint,
         parameters: formValues.parameters,
       });
       const updatedValues = {

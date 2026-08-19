@@ -259,6 +259,8 @@ export async function previewEndpoint(data: {
 
 export async function generateTemplate(data: {
   description: string;
+  method?: string;
+  endpoint?: string;
   parameters?: Record<string, unknown> | string;
 }): Promise<{ template: string }> {
   return request<{ template: string }>("/api/endpoints/generate-template", {
