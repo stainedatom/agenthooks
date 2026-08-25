@@ -269,6 +269,42 @@ export async function generateTemplate(data: {
   });
 }
 
+export async function generateScript(data: {
+  scriptType: "jsonata" | "jsonlogic";
+  description: string;
+  method?: string;
+  endpoint?: string;
+  parameters?: Record<string, unknown> | string;
+}): Promise<{ code: string }> {
+  return request<{ code: string }>("/api/endpoints/generate-script", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export interface FullPipelineConfig {
+  enableJsonata: boolean;
+  jsonataCode: string;
+  enableJsonlogic: boolean;
+  jsonlogicCode: string;
+  enableTemplate: boolean;
+  template: string;
+  enableJavascript: boolean;
+  javascriptCode: string;
+}
+
+export async function generateFullPipeline(data: {
+  description: string;
+  method?: string;
+  endpoint?: string;
+  parameters?: Record<string, unknown> | string;
+}): Promise<FullPipelineConfig> {
+  return request<FullPipelineConfig>("/api/endpoints/generate-full-pipeline", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // ─── Collections ─────────────────────────────────────────
 
 export interface EndpointCollection {

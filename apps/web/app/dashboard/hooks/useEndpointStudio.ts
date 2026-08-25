@@ -4,6 +4,8 @@ import {
   updateEndpoint,
   previewEndpoint,
   generateTemplate,
+  generateScript,
+  generateFullPipeline,
   Endpoint,
 } from "../../../lib/api";
 import { EndpointFormValues, defaultFormValues } from "../../components/EndpointForm";
@@ -76,6 +78,9 @@ export function useEndpointStudio() {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [generatingTemplate, setGeneratingTemplate] = useState(false);
+  const [generatingJsonata, setGeneratingJsonata] = useState(false);
+  const [generatingJsonlogic, setGeneratingJsonlogic] = useState(false);
+  const [generatingFullPipeline, setGeneratingFullPipeline] = useState(false);
   const [error, setError] = useState("");
 
   const [previewHtml, setPreviewHtml] = useState("");
@@ -238,6 +243,98 @@ export function useEndpointStudio() {
     }
   }, [formValues, runPreview]);
 
+  const generateAiJsonata = useCallback(async () => {
+    if (!formValues.description.trim()) {
+      setError("Description is required to generate JSONata code");
+      return;
+    }
+    setGeneratingJsonata(true);
+    setError("");
+    try {
+      const res = await generateScript({
+        scriptType: "jsonata",
+        description: formValues.description,
+        method: formValues.method,
+        endpoint: formValues.endpoint,
+        parameters: formValues.parameters,
+      });
+      const updatedValues = {
+        ...formValues,
+        enableJsonata: true,
+        jsonataCode: res.code,
+      };
+      setFormValues(updatedValues);
+      runPreview(updatedValues);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate AI JSONata code");
+    } finally {
+      setGeneratingJsonata(false);
+    }
+  }, [formValues, runPreview]);
+
+  const generateAiJsonlogic = useCallback(async () => {
+    if (!formValues.description.trim()) {
+      setError("Description is required to generate JSON Logic code");
+      return;
+    }
+    setGeneratingJsonlogic(true);
+    setError("");
+    try {
+      const res = await generateScript({
+        scriptType: "jsonlogic",
+        description: formValues.description,
+        method: formValues.method,
+        endpoint: formValues.endpoint,
+        parameters: formValues.parameters,
+      });
+      const updatedValues = {
+        ...formValues,
+        enableJsonlogic: true,
+        jsonlogicCode: res.code,
+      };
+      setFormValues(updatedValues);
+      runPreview(updatedValues);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate AI JSON Logic code");
+    } finally {
+      setGeneratingJsonlogic(false);
+    }
+  }, [formValues, runPreview]);
+
+  const generateFullAiPipeline = useCallback(async () => {
+    if (!formValues.description.trim()) {
+      setError("Description is required to generate full pipeline");
+      return;
+    }
+    setGeneratingFullPipeline(true);
+    setError("");
+    try {
+      const res = await generateFullPipeline({
+        description: formValues.description,
+        method: formValues.method,
+        endpoint: formValues.endpoint,
+        parameters: formValues.parameters,
+      });
+      const updatedValues: EndpointFormValues = {
+        ...formValues,
+        enableJsonata: res.enableJsonata,
+        jsonataCode: res.jsonataCode || formValues.jsonataCode,
+        enableJsonlogic: res.enableJsonlogic,
+        jsonlogicCode: res.jsonlogicCode || formValues.jsonlogicCode,
+        enableTemplate: res.enableTemplate,
+        template: res.template || formValues.template,
+        enableJavascript: res.enableJavascript,
+        javascriptCode: res.javascriptCode || formValues.javascriptCode,
+      };
+      setFormValues(updatedValues);
+      runPreview(updatedValues);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate full AI pipeline");
+    } finally {
+      setGeneratingFullPipeline(false);
+    }
+  }, [formValues, runPreview]);
+
   return {
     mode,
     editId,
@@ -248,11 +345,17 @@ export function useEndpointStudio() {
     creating,
     updating,
     generatingTemplate,
+    generatingJsonata,
+    generatingJsonlogic,
+    generatingFullPipeline,
     previewHtml,
     previewLoading,
     previewError,
     runPreview: () => runPreview(formValues),
     generateAiTemplate,
+    generateAiJsonata,
+    generateAiJsonlogic,
+    generateFullAiPipeline,
     openCreate,
     openEdit,
     close,

@@ -12,6 +12,8 @@ import {
   fetchDataFromExternalEndpoint,
 } from "../services/pipeline";
 import { generateHandlebarsTemplate } from "../services/templateGenerator";
+import { generateJsonataCode, generateJsonlogicCode } from "../services/scriptGenerator";
+import { generateFullPipeline } from "../services/pipelineGenerator";
 
 const router = Router();
 
@@ -469,6 +471,101 @@ router.post("/generate-template", async (req: Request, res: Response): Promise<v
   } catch (err: any) {
     console.error("Generate template route error:", err);
     res.status(500).json({ error: "InternalServerError", message: err.message || "Failed to generate template" });
+  }
+});
+
+// POST /api/endpoints/generate-script — Generate JSONata or JSON Logic scripts using AI
+router.post("/generate-script", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { scriptType, description, method, endpoint, parameters } = req.body;
+
+    if (!description) {
+      res.status(400).json({ error: "BadRequest", message: "description is required to generate a script" });
+      return;
+    }
+
+    if (!scriptType || (scriptType !== "jsonata" && scriptType !== "jsonlogic")) {
+      res.status(400).json({ error: "BadRequest", message: "scriptType must be 'jsonata' or 'jsonlogic'" });
+      return;
+    }
+
+    let parsedParams: Record<string, any> = {};
+    if (parameters) {
+      if (typeof parameters === "string" && parameters.trim()) {
+        try {
+          parsedParams = JSON.parse(parameters);
+        } catch {
+          parsedParams = {};
+        }
+      } else if (typeof parameters === "object") {
+        parsedParams = parameters;
+      }
+    }
+
+    let sampleData: unknown = parsedParams;
+
+    if (endpoint && method && method !== "NONE") {
+      try {
+        sampleData = await fetchDataFromExternalEndpoint(method, endpoint, parsedParams);
+      } catch (fetchErr: any) {
+        console.warn("External API fetch failed during script generation, falling back to parameters:", fetchErr?.message);
+        sampleData = parsedParams;
+      }
+    }
+
+    let code = "";
+    if (scriptType === "jsonata") {
+      code = await generateJsonataCode(description, sampleData);
+    } else {
+      code = await generateJsonlogicCode(description, sampleData);
+    }
+
+    res.json({ code });
+  } catch (err: any) {
+    console.error("Generate script route error:", err);
+    res.status(500).json({ error: "InternalServerError", message: err.message || "Failed to generate script" });
+  }
+});
+
+// POST /api/endpoints/generate-full-pipeline — Master AI Full Pipeline Orchestrator
+router.post("/generate-full-pipeline", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { description, method, endpoint, parameters } = req.body;
+
+    if (!description) {
+      res.status(400).json({ error: "BadRequest", message: "description is required to generate pipeline" });
+      return;
+    }
+
+    let parsedParams: Record<string, any> = {};
+    if (parameters) {
+      if (typeof parameters === "string" && parameters.trim()) {
+        try {
+          parsedParams = JSON.parse(parameters);
+        } catch {
+          parsedParams = {};
+        }
+      } else if (typeof parameters === "object") {
+        parsedParams = parameters;
+      }
+    }
+
+    let sampleData: unknown = parsedParams;
+
+    if (endpoint && method && method !== "NONE") {
+      try {
+        sampleData = await fetchDataFromExternalEndpoint(method, endpoint, parsedParams);
+      } catch (fetchErr: any) {
+        console.warn("External API fetch failed during full pipeline generation, falling back to parameters:", fetchErr?.message);
+        sampleData = parsedParams;
+      }
+    }
+
+    const pipelineConfig = await generateFullPipeline(description, sampleData);
+    res.json(pipelineConfig);
+  } catch (err: any) {
+    console.error("Generate full pipeline route error:", err);
+    res.status(500).json({ error: "InternalServerError", message: err.message || "Failed to generate full pipeline" });
   }
 });
 

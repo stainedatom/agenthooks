@@ -149,7 +149,7 @@ export async function renderTemplateHtml(
  * Injects client-side data and scripts into the rendered HTML.
  */
 export function injectClientScripts(html: string, data: any, javascriptCode?: string): string {
-  const jsonString = JSON.stringify(data).replace(/<\/script/gi, '<\\/script');
+  const jsonString = (JSON.stringify(data ?? {}) || "{}").replace(/<\/script/gi, '<\\/script');
   const dataScript = `<script id="aghentooks-data" type="application/json">${jsonString}</script>`;
 
   let clientJavascriptScript = "";

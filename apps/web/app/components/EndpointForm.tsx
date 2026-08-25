@@ -43,6 +43,12 @@ interface EndpointFormProps {
   onClearError: () => void;
   onGenerateAiTemplate?: () => void;
   generatingAiTemplate?: boolean;
+  onGenerateAiJsonata?: () => void;
+  generatingAiJsonata?: boolean;
+  onGenerateAiJsonlogic?: () => void;
+  generatingAiJsonlogic?: boolean;
+  onGenerateFullAiPipeline?: () => void;
+  generatingFullPipeline?: boolean;
 }
 
 const METHOD_ACTIVE_STYLES: Record<string, string> = {
@@ -63,6 +69,12 @@ export default function EndpointForm({
   onClearError,
   onGenerateAiTemplate,
   generatingAiTemplate,
+  onGenerateAiJsonata,
+  generatingAiJsonata,
+  onGenerateAiJsonlogic,
+  generatingAiJsonlogic,
+  onGenerateFullAiPipeline,
+  generatingFullPipeline,
 }: EndpointFormProps) {
   /** Partial-update helper — keeps all other fields intact */
   function update<K extends keyof EndpointFormValues>(
@@ -163,6 +175,40 @@ export default function EndpointForm({
               : "Provide query or request body parameters in JSON format. These will be automatically sent with the external API call."}
           </p>
         </div>
+
+        {/* Master AI Full Pipeline Banner */}
+        {onGenerateFullAiPipeline && (
+          <div className="p-3.5 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/80 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+            <div>
+              <h4 className="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                <Sparkles size={14} className="text-purple-600 animate-pulse" />
+                <span>Auto-Generate Full Pipeline with AI</span>
+              </h4>
+              <p className="text-xxs text-purple-700 mt-0.5">
+                Synchronizes JSONata, JSON Logic rules, and UI templates in 1 click.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onGenerateFullAiPipeline}
+              disabled={generatingFullPipeline}
+              className="shrink-0 px-3 py-1.5 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 active:bg-purple-800 rounded-lg cursor-pointer transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+              title="Generate a fully synchronized JSONata, JSON Logic, UI Template, and script pipeline"
+            >
+              {generatingFullPipeline ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Generating Pipeline...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={13} />
+                  <span>Generate Full Pipeline</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       <hr className="border-gray-150" />
@@ -178,6 +224,8 @@ export default function EndpointForm({
         checkboxLabel="Enable JSONata"
         language="json"
         height="120px"
+        onAiGenerate={onGenerateAiJsonata}
+        aiLoading={generatingAiJsonata}
       />
 
       <hr className="border-gray-150" />
@@ -193,6 +241,8 @@ export default function EndpointForm({
         checkboxLabel="Enable JSON Logic"
         language="json"
         height="120px"
+        onAiGenerate={onGenerateAiJsonlogic}
+        aiLoading={generatingAiJsonlogic}
       />
 
       <hr className="border-gray-150" />

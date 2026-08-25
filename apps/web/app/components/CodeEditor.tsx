@@ -24,6 +24,24 @@ interface CodeEditorProps {
   height?: string;
 }
 
+function handleBeforeMount(monaco: any) {
+  try {
+    if (monaco?.languages?.json?.jsonDefaults) {
+      monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+        validate: false,
+      });
+    }
+    if (monaco?.languages?.typescript?.javascriptDefaults) {
+      monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+        noSyntaxValidation: true,
+        noSemanticValidation: true,
+      });
+    }
+  } catch (e) {
+    // Ignore monaco init errors
+  }
+}
+
 export default function CodeEditor({
   value,
   onChange,
@@ -37,6 +55,7 @@ export default function CodeEditor({
         language={language}
         value={value}
         onChange={(val) => onChange(val ?? "")}
+        beforeMount={handleBeforeMount}
         theme="vs-light"
         options={{
           minimap: { enabled: false },

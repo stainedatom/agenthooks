@@ -25,11 +25,17 @@ export function EndpointStudioOverlay({
     creating,
     updating,
     generatingTemplate,
+    generatingJsonata,
+    generatingJsonlogic,
+    generatingFullPipeline,
     previewHtml,
     previewLoading,
     previewError,
     runPreview,
     generateAiTemplate,
+    generateAiJsonata,
+    generateAiJsonlogic,
+    generateFullAiPipeline,
     close,
     handleCreateSubmit,
     handleUpdateSubmit,
@@ -93,6 +99,12 @@ export function EndpointStudioOverlay({
             onClearError={() => setError("")}
             onGenerateAiTemplate={generateAiTemplate}
             generatingAiTemplate={generatingTemplate}
+            onGenerateAiJsonata={generateAiJsonata}
+            generatingAiJsonata={generatingJsonata}
+            onGenerateAiJsonlogic={generateAiJsonlogic}
+            generatingAiJsonlogic={generatingJsonlogic}
+            onGenerateFullAiPipeline={generateFullAiPipeline}
+            generatingFullPipeline={generatingFullPipeline}
           />
         </div>
         <PreviewPanel
