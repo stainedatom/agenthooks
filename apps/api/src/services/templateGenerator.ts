@@ -12,14 +12,16 @@ const ollama = createOllama({
  * Fallback structural template generator when AI provider is offline or throws an error.
  */
 export function generateFallbackHandlebarsTemplate(
-  description: string,
+  instruction: string,
   sampleData: unknown
 ): string {
+  const headerTitle = instruction && instruction.trim() ? instruction.trim() : "Data Overview";
+
   if (!sampleData || typeof sampleData !== "object") {
     return `<div class="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
   <div class="flex items-center gap-2 mb-2">
     <i data-lucide="info" class="w-4 h-4 text-indigo-500"></i>
-    <h3 class="text-sm font-bold text-gray-900">${description || "Data Overview"}</h3>
+    <h3 class="text-sm font-bold text-gray-900">${headerTitle}</h3>
   </div>
   <p class="text-xs text-gray-600 font-mono bg-gray-50 p-2 rounded border border-gray-100">{{this}}</p>
 </div>`;
@@ -36,7 +38,7 @@ export function generateFallbackHandlebarsTemplate(
   <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
     <div class="flex items-center gap-2">
       <i data-lucide="list" class="w-4 h-4 text-gray-500"></i>
-      <h3 class="text-sm font-bold text-gray-900">${description || "Data List"}</h3>
+      <h3 class="text-sm font-bold text-gray-900">${headerTitle}</h3>
     </div>
     <span class="text-xxs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">List View</span>
   </div>
@@ -62,7 +64,7 @@ export function generateFallbackHandlebarsTemplate(
     return `<div class="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
   <div class="flex items-center gap-2 mb-3">
     <i data-lucide="layers" class="w-4 h-4 text-gray-500"></i>
-    <h3 class="text-sm font-bold text-gray-900">${description || "Items"}</h3>
+    <h3 class="text-sm font-bold text-gray-900">${headerTitle}</h3>
   </div>
   <ul class="space-y-1.5">
     {{#each this}}
@@ -89,7 +91,7 @@ export function generateFallbackHandlebarsTemplate(
   return `<div class="p-5 bg-white rounded-xl border border-gray-200 shadow-sm">
   <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
     <i data-lucide="activity" class="w-4 h-4 text-indigo-500"></i>
-    <h3 class="text-sm font-bold text-gray-900">${description || "Summary"}</h3>
+    <h3 class="text-sm font-bold text-gray-900">${headerTitle}</h3>
   </div>
   <div class="space-y-1">
 ${fields}
@@ -98,29 +100,32 @@ ${fields}
 }
 
 /**
- * Generates a clean, modern Handlebars HTML template with Tailwind CSS classes using AI.
+ * Generates a clean, modern Handlebars HTML template with Tailwind CSS classes using AI based on custom UI instructions.
  */
 export async function generateHandlebarsTemplate(
-  description: string,
+  instruction: string,
   sampleData: unknown
 ): Promise<string> {
   const jsonSample = sampleData ? JSON.stringify(sampleData, null, 2) : "{}";
+  const userDirective = instruction && instruction.trim() ? instruction.trim() : "Render modern responsive UI data card";
 
   const prompt = `You are an expert UI designer and frontend developer.
-Generate a modern, beautiful Handlebars HTML template snippet styled with Tailwind CSS utility classes.
+Generate a modern, beautiful Handlebars HTML template snippet styled with Tailwind CSS utility classes based on the provided Input Data JSON and Custom UI Directive.
 
-Endpoint Description: "${description}"
-Sample Mock Data JSON:
+CUSTOM UI DIRECTIVE: "${userDirective}"
+
+INPUT DATA JSON:
 ${jsonSample}
 
 CRITICAL RULES:
 1. Output ONLY the raw Handlebars HTML code block — NO markdown code fences (no \`\`\`html), NO preamble, NO explanation text.
 2. Do NOT include <html>, <head>, or <body> tags — return only the inner UI component container (e.g., <div class="...">...</div>).
-3. DATA-FIRST RULE: Base ALL Handlebars expressions (e.g. {{key}}, {{#each list}}...{{/each}}) STRICTLY on the property keys present in the Sample Mock Data JSON. Do NOT invent or reference any non-existent property names.
-4. DISPLAY-ONLY RULE: This component is a READ-ONLY data display widget for API responses. Focus 100% on formatting, visualizing, and presenting the data cleanly (cards, metric grids, tables, status badges). DO NOT generate mock mutation action buttons like "Edit", "Delete", "Remove", "Save", or "Update".
+3. DATA-FIRST BINDING: Base ALL Handlebars expressions (e.g. {{key}}, {{#each list}}...{{/each}}) STRICTLY on property keys present in the Input Data JSON. Do NOT invent non-existent property names.
+4. DISPLAY-ONLY RULE: This component is a READ-ONLY data display widget for API responses. Focus 100% on formatting, visualizing, and presenting the data cleanly (cards, metric grids, tables, status badges). DO NOT generate mock CRUD mutation buttons like "Edit", "Delete", "Remove", "Save", or "Update".
 5. LUCIDE ICONOGRAPHY: Use Lucide icons with clean <i data-lucide="icon-name" class="w-4 h-4 text-gray-500"></i> tags (e.g. data-lucide="user", "clock", "check-circle", "activity", "trending-up", "mail", "database"). DO NOT write raw inline <svg> or <path d="..."> strings.
 6. TAILWIND CSS: Use class="..." (NOT className="..."). Style with clean, modern Tailwind CSS classes (rounded-xl, border, shadow-sm, flex, grid, modern typography, muted badges, subtle hover states).
-7. Handlebars block helpers like {{#if}} or {{#each}} MUST have matching {{/if}} or {{/each}} closing tags.`;
+7. Handlebars block helpers like {{#if}} or {{#each}} MUST have matching {{/if}} or {{/each}} closing tags.
+8. Follow the Custom UI Directive for layout structure, color preferences, and visual hierarchy.`;
 
   try {
     const { text } = await generateText({
@@ -143,9 +148,9 @@ CRITICAL RULES:
       }
     }
 
-    return generateFallbackHandlebarsTemplate(description, sampleData);
+    return generateFallbackHandlebarsTemplate(instruction, sampleData);
   } catch (err) {
     console.error("AI template generation error:", err);
-    return generateFallbackHandlebarsTemplate(description, sampleData);
+    return generateFallbackHandlebarsTemplate(instruction, sampleData);
   }
 }

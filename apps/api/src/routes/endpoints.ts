@@ -434,12 +434,8 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
 // POST /api/endpoints/generate-template — Generate Handlebars UI template using AI
 router.post("/generate-template", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, method, endpoint, parameters } = req.body;
-
-    if (!description) {
-      res.status(400).json({ error: "BadRequest", message: "description is required to generate a template" });
-      return;
-    }
+    const { description, instruction, method, endpoint, parameters } = req.body;
+    const targetDirective = (instruction && instruction.trim()) || description || "";
 
     let parsedParams: Record<string, any> = {};
     if (parameters) {
@@ -466,7 +462,7 @@ router.post("/generate-template", async (req: Request, res: Response): Promise<v
       }
     }
 
-    const template = await generateHandlebarsTemplate(description, sampleData);
+    const template = await generateHandlebarsTemplate(targetDirective, sampleData);
     res.json({ template });
   } catch (err: any) {
     console.error("Generate template route error:", err);
@@ -477,12 +473,8 @@ router.post("/generate-template", async (req: Request, res: Response): Promise<v
 // POST /api/endpoints/generate-script — Generate JSONata or JSON Logic scripts using AI
 router.post("/generate-script", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { scriptType, description, method, endpoint, parameters } = req.body;
-
-    if (!description) {
-      res.status(400).json({ error: "BadRequest", message: "description is required to generate a script" });
-      return;
-    }
+    const { scriptType, description, instruction, method, endpoint, parameters } = req.body;
+    const targetDirective = (instruction && instruction.trim()) || description || "";
 
     if (!scriptType || (scriptType !== "jsonata" && scriptType !== "jsonlogic")) {
       res.status(400).json({ error: "BadRequest", message: "scriptType must be 'jsonata' or 'jsonlogic'" });
@@ -515,9 +507,9 @@ router.post("/generate-script", async (req: Request, res: Response): Promise<voi
 
     let code = "";
     if (scriptType === "jsonata") {
-      code = await generateJsonataCode(description, sampleData);
+      code = await generateJsonataCode(targetDirective, sampleData);
     } else {
-      code = await generateJsonlogicCode(description, sampleData);
+      code = await generateJsonlogicCode(targetDirective, sampleData);
     }
 
     res.json({ code });
@@ -530,12 +522,8 @@ router.post("/generate-script", async (req: Request, res: Response): Promise<voi
 // POST /api/endpoints/generate-full-pipeline — Master AI Full Pipeline Orchestrator
 router.post("/generate-full-pipeline", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, method, endpoint, parameters } = req.body;
-
-    if (!description) {
-      res.status(400).json({ error: "BadRequest", message: "description is required to generate pipeline" });
-      return;
-    }
+    const { description, instruction, method, endpoint, parameters } = req.body;
+    const targetDirective = (instruction && instruction.trim()) || description || "";
 
     let parsedParams: Record<string, any> = {};
     if (parameters) {
@@ -561,7 +549,7 @@ router.post("/generate-full-pipeline", async (req: Request, res: Response): Prom
       }
     }
 
-    const pipelineConfig = await generateFullPipeline(description, sampleData);
+    const pipelineConfig = await generateFullPipeline(description || "", sampleData, targetDirective);
     res.json(pipelineConfig);
   } catch (err: any) {
     console.error("Generate full pipeline route error:", err);

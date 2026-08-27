@@ -20,14 +20,17 @@ export interface FullPipelineConfig {
  */
 export async function generateFullPipeline(
   description: string,
-  sampleData: unknown
+  sampleData: unknown,
+  instruction?: string
 ): Promise<FullPipelineConfig> {
+  const directive = instruction && instruction.trim() ? instruction.trim() : description;
+
   // Step 1: Generate JSONata transformation
   let jsonataCode = "";
   let currentData = sampleData;
 
   try {
-    jsonataCode = await generateJsonataCode(description, sampleData);
+    jsonataCode = await generateJsonataCode(directive, sampleData);
     if (jsonataCode && jsonataCode !== "$") {
       const expr = jsonata(jsonataCode);
       const evaluated = await expr.evaluate(sampleData);
@@ -50,7 +53,7 @@ export async function generateFullPipeline(
   }
 
   // Step 2: Generate Handlebars UI Template tailored specifically for currentData (transformed payload)
-  const template = await generateHandlebarsTemplate(description, currentData);
+  const template = await generateHandlebarsTemplate(directive, currentData);
 
   const enableJsonata = Boolean(jsonataCode && jsonataCode !== "$");
 

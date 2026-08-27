@@ -259,6 +259,7 @@ export async function previewEndpoint(data: {
 
 export async function generateTemplate(data: {
   description: string;
+  instruction?: string;
   method?: string;
   endpoint?: string;
   parameters?: Record<string, unknown> | string;
@@ -272,6 +273,7 @@ export async function generateTemplate(data: {
 export async function generateScript(data: {
   scriptType: "jsonata" | "jsonlogic";
   description: string;
+  instruction?: string;
   method?: string;
   endpoint?: string;
   parameters?: Record<string, unknown> | string;
@@ -295,6 +297,7 @@ export interface FullPipelineConfig {
 
 export async function generateFullPipeline(data: {
   description: string;
+  instruction?: string;
   method?: string;
   endpoint?: string;
   parameters?: Record<string, unknown> | string;

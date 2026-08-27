@@ -78,19 +78,21 @@ export function generateFallbackJsonlogicCode(sampleData: unknown): string {
 }
 
 /**
- * Generates a valid JSONata query based on endpoint description and sample data.
+ * Generates a valid JSONata query based on custom instruction prompt and sample data.
  */
 export async function generateJsonataCode(
-  description: string,
+  instruction: string,
   sampleData: unknown
 ): Promise<string> {
   const jsonSample = sampleData ? JSON.stringify(sampleData, null, 2) : "{}";
+  const userDirective = instruction && instruction.trim() ? instruction.trim() : "Transform and flatten key data fields";
 
   const prompt = `You are a JSONata query language expert.
-Generate a valid JSONata transformation query based on the input data and description.
+Generate a valid JSONata transformation query based on the provided Input Data JSON and Custom Instruction Directive.
 
-Description: "${description}"
-Input Data JSON:
+CUSTOM INSTRUCTION DIRECTIVE: "${userDirective}"
+
+INPUT DATA JSON:
 ${jsonSample}
 
 CRITICAL RULES:
@@ -99,7 +101,7 @@ CRITICAL RULES:
 3. ARRAY PROPERTIES: If Input Data JSON is an object with an array property (e.g. "products", "items", "data"), target that array property: e.g. \`products[price < 20].{ "productName": title, "price": price }\`.
 4. NUMERIC FILTERS: Convert price or numeric filter conditions to plain numbers without currency symbols: e.g. use \`price < 20\` (NOT \`price < 20$\`).
 5. FIELD MATCHING: Match the actual property names in Input Data JSON (e.g. if the JSON uses "title" for product name, reference "title").
-6. Output a clean, valid JSONata expression that returns the filtered/transformed dataset.`;
+6. Follow the Custom Instruction Directive precisely for filtering, projecting, sorting, or restructuring data.`;
 
   try {
     const { text } = await generateText({
@@ -129,19 +131,21 @@ CRITICAL RULES:
 }
 
 /**
- * Generates a valid JSON Logic rule based on endpoint description and sample data.
+ * Generates a valid JSON Logic rule based on custom instruction prompt and sample data.
  */
 export async function generateJsonlogicCode(
-  description: string,
+  instruction: string,
   sampleData: unknown
 ): Promise<string> {
   const jsonSample = sampleData ? JSON.stringify(sampleData, null, 2) : "{}";
+  const userDirective = instruction && instruction.trim() ? instruction.trim() : "Evaluate data conditions";
 
   const prompt = `You are a JSON Logic rule evaluation expert.
-Generate a valid JSON Logic rule JSON object based on the following input data and description.
+Generate a valid JSON Logic rule JSON object based on the provided Input Data JSON and Custom Instruction Directive.
 
-Description: "${description}"
-Input Data JSON:
+CUSTOM INSTRUCTION DIRECTIVE: "${userDirective}"
+
+INPUT DATA JSON:
 ${jsonSample}
 
 CRITICAL RULES:

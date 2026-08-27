@@ -225,6 +225,7 @@ export function useEndpointStudio() {
     try {
       const res = await generateTemplate({
         description: formValues.description,
+        instruction: formValues.templatePrompt,
         method: formValues.method,
         endpoint: formValues.endpoint,
         parameters: formValues.parameters,
@@ -244,16 +245,13 @@ export function useEndpointStudio() {
   }, [formValues, runPreview]);
 
   const generateAiJsonata = useCallback(async () => {
-    if (!formValues.description.trim()) {
-      setError("Description is required to generate JSONata code");
-      return;
-    }
     setGeneratingJsonata(true);
     setError("");
     try {
       const res = await generateScript({
         scriptType: "jsonata",
         description: formValues.description,
+        instruction: formValues.jsonataPrompt,
         method: formValues.method,
         endpoint: formValues.endpoint,
         parameters: formValues.parameters,
@@ -273,16 +271,13 @@ export function useEndpointStudio() {
   }, [formValues, runPreview]);
 
   const generateAiJsonlogic = useCallback(async () => {
-    if (!formValues.description.trim()) {
-      setError("Description is required to generate JSON Logic code");
-      return;
-    }
     setGeneratingJsonlogic(true);
     setError("");
     try {
       const res = await generateScript({
         scriptType: "jsonlogic",
         description: formValues.description,
+        instruction: formValues.jsonlogicPrompt,
         method: formValues.method,
         endpoint: formValues.endpoint,
         parameters: formValues.parameters,
@@ -302,15 +297,12 @@ export function useEndpointStudio() {
   }, [formValues, runPreview]);
 
   const generateFullAiPipeline = useCallback(async () => {
-    if (!formValues.description.trim()) {
-      setError("Description is required to generate full pipeline");
-      return;
-    }
     setGeneratingFullPipeline(true);
     setError("");
     try {
       const res = await generateFullPipeline({
         description: formValues.description,
+        instruction: formValues.jsonataPrompt || formValues.templatePrompt,
         method: formValues.method,
         endpoint: formValues.endpoint,
         parameters: formValues.parameters,

@@ -10,10 +10,13 @@ export interface EndpointFormValues {
   parameters: string;
   enableJsonata: boolean;
   jsonataCode: string;
+  jsonataPrompt?: string;
   enableJsonlogic: boolean;
   jsonlogicCode: string;
+  jsonlogicPrompt?: string;
   enableTemplate: boolean;
   template: string;
+  templatePrompt?: string;
   enableJavascript: boolean;
   javascriptCode: string;
 }
@@ -25,10 +28,13 @@ export const defaultFormValues: EndpointFormValues = {
   parameters: "",
   enableJsonata: false,
   jsonataCode: "",
+  jsonataPrompt: "",
   enableJsonlogic: false,
   jsonlogicCode: "",
+  jsonlogicPrompt: "",
   enableTemplate: false,
   template: "",
+  templatePrompt: "",
   enableJavascript: false,
   javascriptCode: "",
 };
@@ -226,6 +232,9 @@ export default function EndpointForm({
         height="120px"
         onAiGenerate={onGenerateAiJsonata}
         aiLoading={generatingAiJsonata}
+        promptValue={values.jsonataPrompt}
+        onPromptChange={(val) => update("jsonataPrompt", val)}
+        promptPlaceholder="Custom JSONata AI Directive (e.g. Filter products with price < 20 and pick title & price)..."
       />
 
       <hr className="border-gray-150" />
@@ -243,6 +252,9 @@ export default function EndpointForm({
         height="120px"
         onAiGenerate={onGenerateAiJsonlogic}
         aiLoading={generatingAiJsonlogic}
+        promptValue={values.jsonlogicPrompt}
+        onPromptChange={(val) => update("jsonlogicPrompt", val)}
+        promptPlaceholder="Custom JSON Logic AI Directive (e.g. Check if price is greater than 50)..."
       />
 
       <hr className="border-gray-150" />
@@ -260,6 +272,9 @@ export default function EndpointForm({
         height="200px"
         onAiGenerate={onGenerateAiTemplate}
         aiLoading={generatingAiTemplate}
+        promptValue={values.templatePrompt}
+        onPromptChange={(val) => update("templatePrompt", val)}
+        promptPlaceholder="Custom UI Template AI Directive (e.g. Render 2-column dark-mode cards with price badges)..."
       />
 
       <hr className="border-gray-150" />
@@ -301,6 +316,9 @@ interface CollapsibleCodeSectionProps {
   height: string;
   onAiGenerate?: () => void;
   aiLoading?: boolean;
+  promptValue?: string;
+  onPromptChange?: (val: string) => void;
+  promptPlaceholder?: string;
 }
 
 function CollapsibleCodeSection({
@@ -315,6 +333,9 @@ function CollapsibleCodeSection({
   height,
   onAiGenerate,
   aiLoading,
+  promptValue,
+  onPromptChange,
+  promptPlaceholder,
 }: CollapsibleCodeSectionProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -329,7 +350,7 @@ function CollapsibleCodeSection({
               onClick={onAiGenerate}
               disabled={aiLoading}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg cursor-pointer transition-all shadow-2xs disabled:opacity-50"
-              title="Generate a Handlebars UI template based on your description and mock JSON data"
+              title="Generate with AI using custom instruction directive"
             >
               {aiLoading ? (
                 <>
@@ -355,6 +376,20 @@ function CollapsibleCodeSection({
           </label>
         </div>
       </div>
+
+      {/* Custom AI Instruction Prompt Input (Always visible right away) */}
+      {onPromptChange && (
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={promptValue || ""}
+            onChange={(e) => onPromptChange(e.target.value)}
+            placeholder={promptPlaceholder || "Custom AI Instruction Directive..."}
+            className="flex-1 px-3 py-1.5 text-xs border border-purple-200/90 rounded-lg outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-300 bg-purple-50/50 text-purple-950 font-medium placeholder:text-purple-300/80 transition-all shadow-2xs"
+          />
+        </div>
+      )}
+
       {enabled && (
         <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
           <CodeEditor
