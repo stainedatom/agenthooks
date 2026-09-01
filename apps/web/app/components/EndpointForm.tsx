@@ -1,6 +1,7 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Sparkles, Code, Terminal } from "lucide-react";
 import CodeEditor from "./CodeEditor";
 
 export interface EndpointFormValues {
@@ -82,6 +83,8 @@ export default function EndpointForm({
   onGenerateFullAiPipeline,
   generatingFullPipeline,
 }: EndpointFormProps) {
+  const [activeTab, setActiveTab] = useState<"jsonata" | "logic_ui" | "javascript">("jsonata");
+
   /** Partial-update helper — keeps all other fields intact */
   function update<K extends keyof EndpointFormValues>(
     key: K,
@@ -100,58 +103,68 @@ export default function EndpointForm({
           <button
             type="button"
             onClick={onClearError}
-            className="text-red-400 hover:text-red-600 font-bold ml-2 cursor-pointer"
+            className="text-red-400 hover:text-red-600 font-bold px-1"
           >
-            &times;
+            ✕
           </button>
         </div>
       )}
 
       {/* ─── Section 1: Data Source ─────────────────────────── */}
       <div className="flex flex-col gap-4">
-        <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">
-          1. Data Source
-        </span>
+        <div className="flex justify-between items-center">
+          <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">
+            1. Data Source / Endpoint
+          </span>
+        </div>
 
-        {/* Description */}
+        {/* Endpoint Description */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">Description</label>
+          <label className="text-sm font-medium text-gray-700">
+            Description <span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
+            required
             value={values.description}
             onChange={(e) => update("description", e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition-all bg-gray-50/50 focus:bg-white"
-            placeholder="Displays user dashboard summary"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition-all"
+            placeholder="e.g. Weather Service for San Francisco"
           />
         </div>
 
-        {/* HTTP Method picker */}
+        {/* HTTP Method Selector */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-gray-700">HTTP Method</label>
-          <div className="flex flex-wrap gap-2">
-            {["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"].map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => update("method", m)}
-                className={`px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all duration-150 ${
-                  values.method === m
-                    ? METHOD_ACTIVE_STYLES[m]
-                    : "border-gray-200 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {m}
-              </button>
-            ))}
+          <div className="grid grid-cols-6 gap-2">
+            {["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"].map((m) => {
+              const active = values.method === m;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => update("method", m)}
+                  className={`py-2 text-xs font-mono rounded-lg border transition-all cursor-pointer text-center ${
+                    active
+                      ? METHOD_ACTIVE_STYLES[m]
+                      : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {m}
+                </button>
+              );
+            })}
           </div>
+          <p className="text-xxs text-gray-400 mt-0.5">
+            Select &apos;NONE&apos; if this endpoint operates strictly on mock data without making an external fetch.
+          </p>
         </div>
 
-        {/* Endpoint URL (hidden when method is NONE) */}
+        {/* External Endpoint URL */}
         {values.method !== "NONE" && (
-          <div className="flex flex-col gap-1.5 animate-in fade-in duration-150">
+          <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
             <label className="text-sm font-medium text-gray-700">
-              Endpoint URL{" "}
-              <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+              External Endpoint URL
             </label>
             <input
               type="url"
@@ -219,74 +232,145 @@ export default function EndpointForm({
 
       <hr className="border-gray-150" />
 
-      {/* ─── Section 2: JSONata Transformation ──────────────── */}
-      <CollapsibleCodeSection
-        title="2. JSONata Transformation"
-        enabled={values.enableJsonata}
-        onEnableChange={(val) => update("enableJsonata", val)}
-        value={values.jsonataCode}
-        onValueChange={(val) => update("jsonataCode", val)}
-        placeholder={`/* JSONata query to transform input JSON */\n{\n  "title": title,\n  "items": [items]\n}`}
-        checkboxLabel="Enable JSONata"
-        language="json"
-        height="120px"
-        onAiGenerate={onGenerateAiJsonata}
-        aiLoading={generatingAiJsonata}
-        promptValue={values.jsonataPrompt}
-        onPromptChange={(val) => update("jsonataPrompt", val)}
-        promptPlaceholder="Custom JSONata AI Directive (e.g. Filter products with price < 20 and pick title & price)..."
-      />
+      {/* ─── Pipeline Tabs Navigation ────────────────────── */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">
+            2. Pipeline Configuration Tabs
+          </span>
+          <span className="text-xxs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
+            {activeTab === "jsonata" && "Data Transformation Stage"}
+            {activeTab === "logic_ui" && "Rules & UI Render Stage"}
+            {activeTab === "javascript" && "Client-Side Script Stage"}
+          </span>
+        </div>
 
-      <hr className="border-gray-150" />
+        <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-gray-100/90 rounded-xl border border-gray-200/80 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setActiveTab("jsonata")}
+            className={`py-2 px-3 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center gap-2 relative ${
+              activeTab === "jsonata"
+                ? "bg-white text-purple-950 shadow-xs border border-purple-200/60 font-bold"
+                : "text-gray-600 hover:text-gray-900 hover:bg-white/60 font-medium"
+            }`}
+          >
+            <Sparkles size={14} className={activeTab === "jsonata" ? "text-purple-600" : "text-gray-400"} />
+            <span>JSONata</span>
+            {values.enableJsonata && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-2xs animate-pulse" title="JSONata Enabled" />
+            )}
+          </button>
 
-      {/* ─── Section 3: JSON Logic Evaluation ───────────────── */}
-      <CollapsibleCodeSection
-        title="3. JSON Logic Evaluation"
-        enabled={values.enableJsonlogic}
-        onEnableChange={(val) => update("enableJsonlogic", val)}
-        value={values.jsonlogicCode}
-        onValueChange={(val) => update("jsonlogicCode", val)}
-        placeholder={`/* JSON Logic rule validation or transformation */\n{\n  "if": [\n    { ">": [{ "var": "temp" }, 25] },\n    "Warm",\n    "Cool"\n  ]\n}`}
-        checkboxLabel="Enable JSON Logic"
-        language="json"
-        height="120px"
-        onAiGenerate={onGenerateAiJsonlogic}
-        aiLoading={generatingAiJsonlogic}
-        promptValue={values.jsonlogicPrompt}
-        onPromptChange={(val) => update("jsonlogicPrompt", val)}
-        promptPlaceholder="Custom JSON Logic AI Directive (e.g. Check if price is greater than 50)..."
-      />
+          <button
+            type="button"
+            onClick={() => setActiveTab("logic_ui")}
+            className={`py-2 px-3 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center gap-2 relative ${
+              activeTab === "logic_ui"
+                ? "bg-white text-indigo-950 shadow-xs border border-indigo-200/60 font-bold"
+                : "text-gray-600 hover:text-gray-900 hover:bg-white/60 font-medium"
+            }`}
+          >
+            <Code size={14} className={activeTab === "logic_ui" ? "text-indigo-600" : "text-gray-400"} />
+            <span>JSON Logic &amp; UI Template</span>
+            {(values.enableJsonlogic || values.enableTemplate) && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-2xs animate-pulse" title="Rules or Template Enabled" />
+            )}
+          </button>
 
-      <hr className="border-gray-150" />
+          <button
+            type="button"
+            onClick={() => setActiveTab("javascript")}
+            className={`py-2 px-3 rounded-lg text-xs transition-all cursor-pointer flex items-center justify-center gap-2 relative ${
+              activeTab === "javascript"
+                ? "bg-white text-emerald-950 shadow-xs border border-emerald-200/60 font-bold"
+                : "text-gray-600 hover:text-gray-900 hover:bg-white/60 font-medium"
+            }`}
+          >
+            <Terminal size={14} className={activeTab === "javascript" ? "text-emerald-600" : "text-gray-400"} />
+            <span>Client JS</span>
+            {values.enableJavascript && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-2xs animate-pulse" title="Client JS Enabled" />
+            )}
+          </button>
+        </div>
+      </div>
 
-      {/* ─── Section 4: UI Template ──────────────────────────── */}
-      <CollapsibleCodeSection
-        title="4. UI Template"
-        enabled={values.enableTemplate}
-        onEnableChange={(val) => update("enableTemplate", val)}
-        value={values.template}
-        onValueChange={(val) => update("template", val)}
-        placeholder={`<div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200 text-left">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>`}
-        checkboxLabel="Enable Template"
-        language="html"
-        height="200px"
-        onAiGenerate={onGenerateAiTemplate}
-        aiLoading={generatingAiTemplate}
-        promptValue={values.templatePrompt}
-        onPromptChange={(val) => update("templatePrompt", val)}
-        promptPlaceholder="Custom UI Template AI Directive (e.g. Render 2-column dark-mode cards with price badges)..."
-      />
+      {/* ─── Tab 1: JSONata Transformation ────────────────── */}
+      {activeTab === "jsonata" && (
+        <div className="flex flex-col gap-4 animate-in fade-in duration-150">
+          <CollapsibleCodeSection
+            title="JSONata Transformation"
+            enabled={values.enableJsonata}
+            onEnableChange={(val) => update("enableJsonata", val)}
+            value={values.jsonataCode}
+            onValueChange={(val) => update("jsonataCode", val)}
+            placeholder={`/* JSONata query to transform input JSON */\n{\n  "title": title,\n  "items": [items]\n}`}
+            checkboxLabel="Enable JSONata"
+            language="json"
+            height="180px"
+            onAiGenerate={onGenerateAiJsonata}
+            aiLoading={generatingAiJsonata}
+            promptValue={values.jsonataPrompt}
+            onPromptChange={(val) => update("jsonataPrompt", val)}
+            promptPlaceholder="Custom JSONata AI Directive (e.g. Filter products with price < 20 and pick title & price)..."
+          />
+        </div>
+      )}
 
-      <hr className="border-gray-150" />
+      {/* ─── Tab 2: JSON Logic & UI Template ──────────────── */}
+      {activeTab === "logic_ui" && (
+        <div className="flex flex-col gap-6 animate-in fade-in duration-150">
+          {/* Section: JSON Logic Evaluation */}
+          <CollapsibleCodeSection
+            title="JSON Logic Evaluation"
+            enabled={values.enableJsonlogic}
+            onEnableChange={(val) => update("enableJsonlogic", val)}
+            value={values.jsonlogicCode}
+            onValueChange={(val) => update("jsonlogicCode", val)}
+            placeholder={`/* JSON Logic rule validation or transformation */\n{\n  "if": [\n    { ">": [{ "var": "temp" }, 25] },\n    "Warm",\n    "Cool"\n  ]\n}`}
+            checkboxLabel="Enable JSON Logic"
+            language="json"
+            height="120px"
+            onAiGenerate={onGenerateAiJsonlogic}
+            aiLoading={generatingAiJsonlogic}
+            promptValue={values.jsonlogicPrompt}
+            onPromptChange={(val) => update("jsonlogicPrompt", val)}
+            promptPlaceholder="Custom JSON Logic AI Directive (e.g. Check if price is greater than 50)..."
+          />
 
-      {/* ─── Section 5: JavaScript (Client) ─────────────────── */}
-      <CollapsibleCodeSection
-        title="5. JavaScript (Client)"
-        enabled={values.enableJavascript}
-        onEnableChange={(val) => update("enableJavascript", val)}
-        value={values.javascriptCode}
-        onValueChange={(val) => update("javascriptCode", val)}
-        placeholder={`// Client-side script. Executes directly in the browser iframe.
+          <hr className="border-gray-150" />
+
+          {/* Section: UI Template */}
+          <CollapsibleCodeSection
+            title="UI Template"
+            enabled={values.enableTemplate}
+            onEnableChange={(val) => update("enableTemplate", val)}
+            value={values.template}
+            onValueChange={(val) => update("template", val)}
+            placeholder={`<div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200 text-left">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>`}
+            checkboxLabel="Enable Template"
+            language="html"
+            height="200px"
+            onAiGenerate={onGenerateAiTemplate}
+            aiLoading={generatingAiTemplate}
+            promptValue={values.templatePrompt}
+            onPromptChange={(val) => update("templatePrompt", val)}
+            promptPlaceholder="Custom UI Template AI Directive (e.g. Render 2-column dark-mode cards with price badges)..."
+          />
+        </div>
+      )}
+
+      {/* ─── Tab 3: JavaScript (Client) ────────────────────── */}
+      {activeTab === "javascript" && (
+        <div className="flex flex-col gap-4 animate-in fade-in duration-150">
+          <CollapsibleCodeSection
+            title="JavaScript (Client)"
+            enabled={values.enableJavascript}
+            onEnableChange={(val) => update("enableJavascript", val)}
+            value={values.javascriptCode}
+            onValueChange={(val) => update("javascriptCode", val)}
+            placeholder={`// Client-side script. Executes directly in the browser iframe.
 // Exposes 'data' / 'input' as local variables containing the API response.
 let count = 0;
 const btn = document.getElementById('counterBtn');
@@ -296,10 +380,12 @@ if (btn) {
     btn.textContent = \`Clicked \${count} times\`;
   });
 }`}
-        checkboxLabel="Enable JavaScript"
-        language="javascript"
-        height="160px"
-      />
+            checkboxLabel="Enable JavaScript"
+            language="javascript"
+            height="180px"
+          />
+        </div>
+      )}
     </form>
   );
 }
