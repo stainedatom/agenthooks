@@ -50,6 +50,22 @@ export function generateFallbackJsonataCode(sampleData: unknown): string {
  * Fallback JSON Logic generator when AI provider is offline or throws an error.
  */
 export function generateFallbackJsonlogicCode(sampleData: unknown): string {
+  if (Array.isArray(sampleData) && sampleData.length > 0) {
+    const first = sampleData[0];
+    if (first && typeof first === "object") {
+      const keys = Object.keys(first);
+      const strKey = keys.find((k) => typeof first[k] === "string");
+      if (strKey) {
+        return JSON.stringify(
+          {
+            "==": [{ var: `0.${strKey}` }, first[strKey]],
+          },
+          null,
+          2
+        );
+      }
+    }
+  }
   if (sampleData && typeof sampleData === "object" && !Array.isArray(sampleData)) {
     const keys = Object.keys(sampleData);
     const numKey = keys.find((k) => typeof (sampleData as any)[k] === "number");
@@ -63,18 +79,17 @@ export function generateFallbackJsonlogicCode(sampleData: unknown): string {
         2
       );
     }
-    const firstKey = keys[0];
-    if (firstKey) {
-      return JSON.stringify(
-        {
-          if: [{ "!!": { var: firstKey } }, "Valid", "Invalid"],
-        },
-        null,
-        2
-      );
-    }
   }
-  return JSON.stringify({ "==": [1, 1] }, null, 2);
+  return JSON.stringify({ "==": [{ var: "0.city" }, "kilcoole"] }, null, 2);
+}
+
+/**
+ * Fallback Client-side JavaScript generator when AI provider is offline or throws an error.
+ */
+export function generateFallbackJavascriptCode(): string {
+  return `// Client-side script. Executes directly in the browser iframe.
+// Exposes 'data' / 'input' as local variables containing the API response.
+console.log("Pipeline data loaded:", data);`;
 }
 
 /**
@@ -85,10 +100,10 @@ export async function generateJsonataCode(
   sampleData: unknown
 ): Promise<string> {
   const jsonSample = sampleData ? JSON.stringify(sampleData, null, 2) : "{}";
-  const userDirective = instruction && instruction.trim() ? instruction.trim() : "Transform and flatten key data fields";
+  const userDirective = instruction && instruction.trim() ? instruction.trim() : "Filter and project relevant data fields";
 
-  const prompt = `You are a JSONata query language expert.
-Generate a valid JSONata transformation query based on the provided Input Data JSON and Custom Instruction Directive.
+  const prompt = `You are a JSONata data transformation expert.
+Generate a valid JSONata query string based on the provided Input Data JSON and Custom Instruction Directive.
 
 CUSTOM INSTRUCTION DIRECTIVE: "${userDirective}"
 
@@ -96,12 +111,9 @@ INPUT DATA JSON:
 ${jsonSample}
 
 CRITICAL RULES:
-1. Output ONLY the raw JSONata query code block — NO markdown fences (no \`\`\`jsonata), NO preamble, NO explanation text.
-2. SYNTAX SPECIFICATION: In JSONata, array mapping/projection uses a DOT followed by braces: e.g. \`products.{ "productName": title, "price": price }\` or \`products[price < 20].{ "productName": title, "price": price }\`. NEVER write \`products[{ ... }]\` without a dot!
-3. ARRAY PROPERTIES: If Input Data JSON is an object with an array property (e.g. "products", "items", "data"), target that array property: e.g. \`products[price < 20].{ "productName": title, "price": price }\`.
-4. NUMERIC FILTERS: Convert price or numeric filter conditions to plain numbers without currency symbols: e.g. use \`price < 20\` (NOT \`price < 20$\`).
-5. FIELD MATCHING: Match the actual property names in Input Data JSON (e.g. if the JSON uses "title" for product name, reference "title").
-6. Follow the Custom Instruction Directive precisely for filtering, projecting, sorting, or restructuring data.`;
+1. Output ONLY the raw executable JSONata query string — NO markdown fences (no \`\`\`jsonata), NO preamble, NO explanation text.
+2. The JSONata query MUST compile and evaluate without errors against the provided Input Data JSON.
+3. For array projections, use dot syntax like \`array.{\`key\`: value}\` or \`$[filter].{\`key\`: value}\`. Do NOT use bracket syntax \`array[{\`key\`: value}]\`.`;
 
   try {
     const { text } = await generateText({
@@ -110,13 +122,16 @@ CRITICAL RULES:
     });
 
     let cleaned = text.trim();
-    cleaned = cleaned.replace(/^```(?:jsonata|json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    cleaned = cleaned.replace(/^```(?:jsonata)?\s*/i, "").replace(/\s*```$/i, "").trim();
 
-    // Validate compilation AND evaluation with jsonata
+    // Sanitize accidental array bracket syntax
+    cleaned = cleaned.replace(/([a-zA-Z0-9_\$]+)\[\s*\{/g, "$1.{");
+
+    // Validate execution with jsonata
     try {
       const expr = jsonata(cleaned);
-      const evalResult = await expr.evaluate(sampleData);
-      if (evalResult !== undefined) {
+      const res = await expr.evaluate(sampleData);
+      if (res !== undefined) {
         return cleaned;
       }
     } catch (err) {
@@ -151,7 +166,11 @@ ${jsonSample}
 CRITICAL RULES:
 1. Output ONLY the valid raw JSON object string representing the JSON Logic rule — NO markdown fences (no \`\`\`json), NO preamble, NO explanation text.
 2. The JSON Logic rule MUST be a valid JSON object executable with json-logic-js (using operators like "if", ">", "<", "==", "var", "and", "or").
-3. Reference property keys present in the Input Data JSON using {"var": "key"}.`;
+3. ARRAY INDEXING RULE FOR JSON LOGIC "var":
+   - ALWAYS use dot notation WITHOUT brackets for array indexing in "var" paths.
+   - Example for array item 0 property: "0.city" or "0.address.city".
+   - NEVER use square brackets like "[0].city" or "items[0].city". Square brackets cause execution failures in json-logic-js.
+4. Reference property keys present in the Input Data JSON using {"var": "key"}.`;
 
   try {
     const { text } = await generateText({
@@ -161,6 +180,9 @@ CRITICAL RULES:
 
     let cleaned = text.trim();
     cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+
+    // Sanitize array bracket syntax in "var" paths (e.g. "[0].city" -> "0.city", "items[0].city" -> "items.0.city")
+    cleaned = cleaned.replace(/\[(\d+)\]/g, ".$1").replace(/"\./g, "\"").replace(/\.+/g, ".");
 
     // Validate execution with jsonLogic
     try {
@@ -175,5 +197,52 @@ CRITICAL RULES:
   } catch (err) {
     console.error("AI JSON Logic generation error:", err);
     return generateFallbackJsonlogicCode(sampleData);
+  }
+}
+
+/**
+ * Generates valid client-side JavaScript code based on custom instruction prompt and sample data.
+ */
+export async function generateJavascriptCode(
+  instruction: string,
+  sampleData: unknown
+): Promise<string> {
+  const jsonSample = sampleData ? JSON.stringify(sampleData, null, 2) : "{}";
+  const userDirective = instruction && instruction.trim() ? instruction.trim() : "Interactive client widget behavior";
+
+  const prompt = `You are an expert front-end JavaScript developer.
+Generate browser-compatible client-side JavaScript code to enhance an embedded UI widget.
+
+CUSTOM INSTRUCTION DIRECTIVE: "${userDirective}"
+
+AVAILABLE DATA (exposed as local variable 'data'):
+${jsonSample}
+
+CRITICAL RULES:
+1. Output ONLY the raw executable JavaScript code string — NO markdown fences (no \`\`\`js or \`\`\`javascript), NO preamble, NO HTML tags.
+2. The code will execute inside an iframe scope where the local variable 'data' contains the JSON response object/array.
+3. Keep the script clean, performant, and error-safe. Add interactive DOM event listeners or logging if appropriate.`;
+
+  try {
+    const { text } = await generateText({
+      model: ollama.chat(config.aiModel),
+      prompt,
+    });
+
+    let cleaned = text.trim();
+    cleaned = cleaned.replace(/^```(?:js|javascript)?\s*/i, "").replace(/\s*```$/i, "").trim();
+
+    // Basic syntax check
+    try {
+      new Function("data", cleaned);
+      return cleaned;
+    } catch (err) {
+      console.warn("AI generated JavaScript failed syntax check, using fallback:", err);
+    }
+
+    return generateFallbackJavascriptCode();
+  } catch (err) {
+    console.error("AI JavaScript generation error:", err);
+    return generateFallbackJavascriptCode();
   }
 }

@@ -26,6 +26,8 @@ export interface PipelineOptions {
   method: string;
   endpoint?: string;
   template?: string;
+  templateB?: string;
+  enableDualTemplate?: boolean;
   compiledCss?: string;
   parameters?: Record<string, unknown>;
   javascriptCode?: string;
@@ -95,7 +97,9 @@ export async function applyJsonataTransformation(jsonataCode: string, data: any)
  */
 export function applyJsonLogicEvaluation(jsonlogicCode: string, data: any): any {
   try {
-    const rule = JSON.parse(jsonlogicCode);
+    // Normalize user-typed bracket paths (e.g. "[0].city" -> "0.city") for seamless evaluation
+    const sanitizedCode = jsonlogicCode.replace(/\[(\d+)\]/g, ".$1").replace(/"\./g, "\"").replace(/\.+/g, ".");
+    const rule = JSON.parse(sanitizedCode);
     return jsonLogic.apply(rule, data);
   } catch (err: any) {
     console.error("JSON Logic evaluation error:", err);
@@ -274,22 +278,47 @@ export async function runPipeline(
 
   // 1. JSONata Transform
   if (options.jsonataCode) {
-    data = await applyJsonataTransformation(options.jsonataCode, data);
+    try {
+      data = await applyJsonataTransformation(options.jsonataCode, data);
+      console.log("[Pipeline Debug] Data after JSONata transform:", JSON.stringify(Array.isArray(data) ? data[0] : data));
+    } catch (err) {
+      console.error("[Pipeline Debug] JSONata transform error:", err);
+    }
   }
 
-  // 2. JSON Logic Rule
+  // 2. JSON Logic Rule Evaluation
+  let logicResult: any = null;
   if (options.jsonlogicCode) {
-    data = applyJsonLogicEvaluation(options.jsonlogicCode, data);
+    logicResult = applyJsonLogicEvaluation(options.jsonlogicCode, data);
+    console.log("[Pipeline Debug] JSON Logic Rule:", options.jsonlogicCode.trim());
+    console.log("[Pipeline Debug] JSON Logic Evaluation Result:", logicResult);
   }
+
+  // Determine active template (Template A vs Template B) based on dual template mode & logicResult
+  let selectedTemplate = options.template || "";
+  if (options.enableDualTemplate && options.templateB) {
+    const isFalseResult =
+      logicResult === false ||
+      logicResult === 0 ||
+      logicResult === "Fail" ||
+      logicResult === "false" ||
+      logicResult === "B" ||
+      logicResult === null ||
+      logicResult === undefined;
+    if (isFalseResult) {
+      selectedTemplate = options.templateB;
+    }
+  }
+  console.log("[Pipeline Debug] enableDualTemplate:", options.enableDualTemplate, "isFalseResult:", logicResult === false, "selectedTemplate:", selectedTemplate === options.templateB ? "Template B" : "Template A");
 
   // Determine CSS
   let css = options.compiledCss || "";
-  if (options.template && (forceCompileCss || !css)) {
-    css = await compileTailwindCssForTemplate(options.template);
+  if (selectedTemplate && (forceCompileCss || !css)) {
+    css = await compileTailwindCssForTemplate(selectedTemplate);
   }
 
   // Render template
-  let html = await renderTemplateHtml(options.template, data, css, options.description);
+  let html = await renderTemplateHtml(selectedTemplate, data, css, options.description);
 
   // Inject scripts
   html = injectClientScripts(html, data, options.javascriptCode);

@@ -10,9 +10,10 @@ import { compileTailwind } from "../services/compile";
 import {
   runPipeline,
   fetchDataFromExternalEndpoint,
+  applyJsonataTransformation,
 } from "../services/pipeline";
 import { generateHandlebarsTemplate } from "../services/templateGenerator";
-import { generateJsonataCode, generateJsonlogicCode } from "../services/scriptGenerator";
+import { generateJsonataCode, generateJsonlogicCode, generateJavascriptCode } from "../services/scriptGenerator";
 import { generateFullPipeline } from "../services/pipelineGenerator";
 
 const router = Router();
@@ -28,6 +29,8 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       method,
       endpoint,
       template,
+      templateB,
+      enableDualTemplate,
       parameters,
       scriptType,
       scriptCode,
@@ -125,6 +128,15 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       }
     }
 
+    if (templateB) {
+      try {
+        Handlebars.compile(templateB);
+      } catch {
+        res.status(400).json({ error: "BadRequest", message: "Invalid Handlebars Template B" });
+        return;
+      }
+    }
+
     // Compile Tailwind CSS at creation time if a template is provided
     let compiledCss = "";
     if (template) {
@@ -146,6 +158,8 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       method,
       endpoint: endpoint || "",
       template: template || "",
+      templateB: templateB || "",
+      enableDualTemplate: Boolean(enableDualTemplate),
       compiledCss,
       parameters: parameters || {},
       javascriptCode: resolvedJavascriptCode,
@@ -275,6 +289,8 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
       method,
       endpoint,
       template,
+      templateB,
+      enableDualTemplate,
       parameters,
       scriptType,
       scriptCode,
@@ -400,11 +416,22 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
       compiledCss = "";
     }
 
+    if (templateB) {
+      try {
+        Handlebars.compile(templateB);
+      } catch {
+        res.status(400).json({ error: "BadRequest", message: "Invalid Handlebars Template B" });
+        return;
+      }
+    }
+
     const updatedDoc = {
       description,
       method,
       endpoint: endpoint || "",
       template: template || "",
+      templateB: templateB || "",
+      enableDualTemplate: Boolean(enableDualTemplate),
       compiledCss,
       parameters: parameters || {},
       javascriptCode: resolvedJavascriptCode,
@@ -434,7 +461,7 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
 // POST /api/endpoints/generate-template — Generate Handlebars UI template using AI
 router.post("/generate-template", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, instruction, method, endpoint, parameters } = req.body;
+    const { description, instruction, method, endpoint, parameters, enableJsonata, jsonataCode } = req.body;
     const targetDirective = (instruction && instruction.trim()) || description || "";
 
     let parsedParams: Record<string, any> = {};
@@ -462,6 +489,18 @@ router.post("/generate-template", async (req: Request, res: Response): Promise<v
       }
     }
 
+    // Apply JSONata transformation if enabled so template generator targets transformed schema
+    if (enableJsonata && jsonataCode && typeof jsonataCode === "string" && jsonataCode.trim()) {
+      try {
+        const transformed = await applyJsonataTransformation(jsonataCode, sampleData);
+        if (transformed !== undefined) {
+          sampleData = transformed;
+        }
+      } catch (jErr) {
+        console.warn("Failed to apply JSONata before template generation:", jErr);
+      }
+    }
+
     const template = await generateHandlebarsTemplate(targetDirective, sampleData);
     res.json({ template });
   } catch (err: any) {
@@ -473,11 +512,11 @@ router.post("/generate-template", async (req: Request, res: Response): Promise<v
 // POST /api/endpoints/generate-script — Generate JSONata or JSON Logic scripts using AI
 router.post("/generate-script", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { scriptType, description, instruction, method, endpoint, parameters } = req.body;
+    const { scriptType, description, instruction, method, endpoint, parameters, enableJsonata, jsonataCode } = req.body;
     const targetDirective = (instruction && instruction.trim()) || description || "";
 
-    if (!scriptType || (scriptType !== "jsonata" && scriptType !== "jsonlogic")) {
-      res.status(400).json({ error: "BadRequest", message: "scriptType must be 'jsonata' or 'jsonlogic'" });
+    if (!scriptType || (scriptType !== "jsonata" && scriptType !== "jsonlogic" && scriptType !== "javascript")) {
+      res.status(400).json({ error: "BadRequest", message: "scriptType must be 'jsonata', 'jsonlogic', or 'javascript'" });
       return;
     }
 
@@ -505,11 +544,25 @@ router.post("/generate-script", async (req: Request, res: Response): Promise<voi
       }
     }
 
+    // Apply JSONata transformation if enabled (for script types other than jsonata itself)
+    if (scriptType !== "jsonata" && enableJsonata && jsonataCode && typeof jsonataCode === "string" && jsonataCode.trim()) {
+      try {
+        const transformed = await applyJsonataTransformation(jsonataCode, sampleData);
+        if (transformed !== undefined) {
+          sampleData = transformed;
+        }
+      } catch (jErr) {
+        console.warn("Failed to apply JSONata before script generation:", jErr);
+      }
+    }
+
     let code = "";
     if (scriptType === "jsonata") {
       code = await generateJsonataCode(targetDirective, sampleData);
-    } else {
+    } else if (scriptType === "jsonlogic") {
       code = await generateJsonlogicCode(targetDirective, sampleData);
+    } else {
+      code = await generateJavascriptCode(targetDirective, sampleData);
     }
 
     res.json({ code });
@@ -565,6 +618,8 @@ router.post("/preview", async (req: Request, res: Response): Promise<void> => {
       method,
       endpoint,
       template,
+      templateB,
+      enableDualTemplate,
       parameters,
       javascriptCode,
       jsonataCode,
@@ -603,6 +658,8 @@ router.post("/preview", async (req: Request, res: Response): Promise<void> => {
         method,
         endpoint,
         template,
+        templateB,
+        enableDualTemplate: Boolean(enableDualTemplate),
         javascriptCode,
         jsonataCode,
         jsonlogicCode,
@@ -656,6 +713,8 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
         method: endpointDoc.method,
         endpoint: endpointDoc.endpoint,
         template: endpointDoc.template,
+        templateB: endpointDoc.templateB,
+        enableDualTemplate: Boolean(endpointDoc.enableDualTemplate),
         compiledCss: endpointDoc.compiledCss,
         parameters: endpointDoc.parameters,
         javascriptCode: endpointDoc.javascriptCode || (endpointDoc.scriptType === "javascript" ? endpointDoc.scriptCode : ""),

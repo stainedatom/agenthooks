@@ -17,6 +17,8 @@ export interface EndpointFormValues {
   jsonlogicPrompt?: string;
   enableTemplate: boolean;
   template: string;
+  templateB?: string;
+  enableDualTemplate?: boolean;
   templatePrompt?: string;
   enableJavascript: boolean;
   javascriptCode: string;
@@ -35,6 +37,8 @@ export const defaultFormValues: EndpointFormValues = {
   jsonlogicPrompt: "",
   enableTemplate: false,
   template: "",
+  templateB: "",
+  enableDualTemplate: false,
   templatePrompt: "",
   enableJavascript: false,
   javascriptCode: "",
@@ -48,7 +52,7 @@ interface EndpointFormProps {
   onSubmit: (e: React.FormEvent) => void;
   error: string;
   onClearError: () => void;
-  onGenerateAiTemplate?: () => void;
+  onGenerateAiTemplate?: (target?: "A" | "B") => void;
   generatingAiTemplate?: boolean;
   onGenerateAiJsonata?: () => void;
   generatingAiJsonata?: boolean;
@@ -84,6 +88,7 @@ export default function EndpointForm({
   generatingFullPipeline,
 }: EndpointFormProps) {
   const [activeTab, setActiveTab] = useState<"jsonata" | "logic_ui" | "javascript">("jsonata");
+  const [subTemplateTab, setSubTemplateTab] = useState<"A" | "B">("A");
 
   /** Partial-update helper — keeps all other fields intact */
   function update<K extends keyof EndpointFormValues>(
@@ -308,7 +313,7 @@ export default function EndpointForm({
             placeholder={`/* JSONata query to transform input JSON */\n{\n  "title": title,\n  "items": [items]\n}`}
             checkboxLabel="Enable JSONata"
             language="json"
-            height="180px"
+            height="260px"
             onAiGenerate={onGenerateAiJsonata}
             aiLoading={generatingAiJsonata}
             promptValue={values.jsonataPrompt}
@@ -331,7 +336,7 @@ export default function EndpointForm({
             placeholder={`/* JSON Logic rule validation or transformation */\n{\n  "if": [\n    { ">": [{ "var": "temp" }, 25] },\n    "Warm",\n    "Cool"\n  ]\n}`}
             checkboxLabel="Enable JSON Logic"
             language="json"
-            height="120px"
+            height="200px"
             onAiGenerate={onGenerateAiJsonlogic}
             aiLoading={generatingAiJsonlogic}
             promptValue={values.jsonlogicPrompt}
@@ -342,22 +347,106 @@ export default function EndpointForm({
           <hr className="border-gray-150" />
 
           {/* Section: UI Template */}
-          <CollapsibleCodeSection
-            title="UI Template"
-            enabled={values.enableTemplate}
-            onEnableChange={(val) => update("enableTemplate", val)}
-            value={values.template}
-            onValueChange={(val) => update("template", val)}
-            placeholder={`<div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200 text-left">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>`}
-            checkboxLabel="Enable Template"
-            language="html"
-            height="200px"
-            onAiGenerate={onGenerateAiTemplate}
-            aiLoading={generatingAiTemplate}
-            promptValue={values.templatePrompt}
-            onPromptChange={(val) => update("templatePrompt", val)}
-            promptPlaceholder="Custom UI Template AI Directive (e.g. Render 2-column dark-mode cards with price badges)..."
-          />
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">
+                UI Template Options
+              </span>
+              <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-purple-700 font-semibold select-none bg-purple-50 hover:bg-purple-100/80 px-3 py-1 rounded-lg border border-purple-200/80 transition-all shadow-2xs">
+                <input
+                  type="checkbox"
+                  checked={!!values.enableDualTemplate}
+                  onChange={(e) => update("enableDualTemplate", e.target.checked)}
+                  className="rounded border-purple-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                />
+                <span>Dual Template Mode (Controlled by JSON Logic)</span>
+              </label>
+            </div>
+
+            {values.enableDualTemplate ? (
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-1.5 p-1 bg-gray-100/80 rounded-xl border border-gray-200/80 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setSubTemplateTab("A")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                      subTemplateTab === "A"
+                        ? "bg-white text-emerald-950 shadow-xs border border-emerald-200 font-bold"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Template A (If True / Pass)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubTemplateTab("B")}
+                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                      subTemplateTab === "B"
+                        ? "bg-white text-rose-950 shadow-xs border border-rose-200 font-bold"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span>Template B (If False / Fail)</span>
+                  </button>
+                </div>
+
+                {subTemplateTab === "A" ? (
+                  <CollapsibleCodeSection
+                    title="UI Template A (True / Pass State)"
+                    enabled={values.enableTemplate}
+                    onEnableChange={(val) => update("enableTemplate", val)}
+                    value={values.template}
+                    onValueChange={(val) => update("template", val)}
+                    placeholder={`<div class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-900">\n  <h2 class="font-bold">Pass: {{title}}</h2>\n</div>`}
+                    checkboxLabel="Enable Template A"
+                    language="html"
+                    height="280px"
+                    onAiGenerate={onGenerateAiTemplate ? () => onGenerateAiTemplate("A") : undefined}
+                    aiLoading={generatingAiTemplate}
+                    promptValue={values.templatePrompt}
+                    onPromptChange={(val) => update("templatePrompt", val)}
+                    promptPlaceholder="Custom Directive for Template A (e.g. Render green success card)..."
+                  />
+                ) : (
+                  <CollapsibleCodeSection
+                    title="UI Template B (False / Fail State)"
+                    enabled={values.enableTemplate}
+                    onEnableChange={(val) => update("enableTemplate", val)}
+                    value={values.templateB || ""}
+                    onValueChange={(val) => update("templateB", val)}
+                    placeholder={`<div class="bg-rose-50 border border-rose-200 p-4 rounded-xl text-rose-900">\n  <h2 class="font-bold">Fail / Warning: {{title}}</h2>\n</div>`}
+                    checkboxLabel="Enable Template B"
+                    language="html"
+                    height="280px"
+                    onAiGenerate={onGenerateAiTemplate ? () => onGenerateAiTemplate("B") : undefined}
+                    aiLoading={generatingAiTemplate}
+                    promptValue={values.templatePrompt}
+                    onPromptChange={(val) => update("templatePrompt", val)}
+                    promptPlaceholder="Custom Directive for Template B (e.g. Render red alert card)..."
+                  />
+                )}
+              </div>
+            ) : (
+              <CollapsibleCodeSection
+                title="UI Template"
+                enabled={values.enableTemplate}
+                onEnableChange={(val) => update("enableTemplate", val)}
+                value={values.template}
+                onValueChange={(val) => update("template", val)}
+                placeholder={`<div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200 text-left">\n  <h2 class="text-xl font-bold text-gray-900">{{title}}</h2>\n  <p class="text-gray-600 mt-2">{{summary}}</p>\n</div>`}
+                checkboxLabel="Enable Template"
+                language="html"
+                height="300px"
+                onAiGenerate={onGenerateAiTemplate ? () => onGenerateAiTemplate("A") : undefined}
+                aiLoading={generatingAiTemplate}
+                promptValue={values.templatePrompt}
+                onPromptChange={(val) => update("templatePrompt", val)}
+                promptPlaceholder="Custom UI Template AI Directive (e.g. Render 2-column dark-mode cards with price badges)..."
+              />
+            )}
+          </div>
         </div>
       )}
 
@@ -382,7 +471,7 @@ if (btn) {
 }`}
             checkboxLabel="Enable JavaScript"
             language="javascript"
-            height="180px"
+            height="260px"
           />
         </div>
       )}
@@ -424,9 +513,10 @@ function CollapsibleCodeSection({
   promptPlaceholder,
 }: CollapsibleCodeSectionProps) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3.5 p-4 bg-white border border-gray-200/80 rounded-2xl shadow-2xs">
       <div className="flex justify-between items-center">
-        <span className="text-xxs font-bold text-gray-400 tracking-wider uppercase">
+        <span className="text-xxs font-bold text-gray-500 tracking-wider uppercase flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
           {title}
         </span>
         <div className="flex items-center gap-3">
@@ -435,7 +525,7 @@ function CollapsibleCodeSection({
               type="button"
               onClick={onAiGenerate}
               disabled={aiLoading}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg cursor-pointer transition-all shadow-2xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100/80 border border-purple-200/80 rounded-lg cursor-pointer transition-all shadow-2xs disabled:opacity-50"
               title="Generate with AI using custom instruction directive"
             >
               {aiLoading ? (
@@ -451,27 +541,28 @@ function CollapsibleCodeSection({
               )}
             </button>
           )}
-          <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-500 font-medium select-none">
+          <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-600 font-semibold select-none">
             <input
               type="checkbox"
               checked={enabled}
               onChange={(e) => onEnableChange(e.target.checked)}
-              className="rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
             />
             {checkboxLabel}
           </label>
         </div>
       </div>
 
-      {/* Custom AI Instruction Prompt Input (Always visible right away) */}
+      {/* Custom AI Instruction Prompt Input */}
       {onPromptChange && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50/40 border border-purple-200/80 rounded-xl focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-100/80 transition-all shadow-2xs">
+          <Sparkles size={14} className="text-purple-500 shrink-0" />
           <input
             type="text"
             value={promptValue || ""}
             onChange={(e) => onPromptChange(e.target.value)}
             placeholder={promptPlaceholder || "Custom AI Instruction Directive..."}
-            className="flex-1 px-3 py-1.5 text-xs border border-purple-200/90 rounded-lg outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-300 bg-purple-50/50 text-purple-950 font-medium placeholder:text-purple-300/80 transition-all shadow-2xs"
+            className="flex-1 text-xs outline-none bg-transparent text-purple-950 font-medium placeholder:text-purple-300/80"
           />
         </div>
       )}

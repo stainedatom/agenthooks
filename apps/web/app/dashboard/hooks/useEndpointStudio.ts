@@ -51,6 +51,8 @@ function prepareSubmitPayload(values: EndpointFormValues) {
     endpoint,
     enableTemplate,
     template,
+    enableDualTemplate,
+    templateB,
     enableJavascript,
     javascriptCode,
     enableJsonata,
@@ -64,6 +66,8 @@ function prepareSubmitPayload(values: EndpointFormValues) {
     method,
     endpoint,
     template: enableTemplate ? template : "",
+    templateB: enableTemplate && enableDualTemplate ? templateB : "",
+    enableDualTemplate: enableTemplate ? Boolean(enableDualTemplate) : false,
     parameters: params.value,
     javascriptCode: enableJavascript ? javascriptCode : "",
     jsonataCode: enableJsonata ? jsonataCode : "",
@@ -112,6 +116,8 @@ export function useEndpointStudio() {
         method: values.method,
         endpoint: values.endpoint,
         template: values.enableTemplate ? values.template : "",
+        templateB: values.enableTemplate && values.enableDualTemplate ? values.templateB : "",
+        enableDualTemplate: values.enableTemplate ? Boolean(values.enableDualTemplate) : false,
         parameters: parsedParams,
         javascriptCode: values.enableJavascript ? values.javascriptCode : "",
         jsonataCode: values.enableJsonata ? values.jsonataCode : "",
@@ -154,6 +160,8 @@ export function useEndpointStudio() {
         jsonlogicCode: jlogicCode || "",
         enableTemplate: !!templ,
         template: templ,
+        templateB: ep.templateB || "",
+        enableDualTemplate: !!ep.enableDualTemplate,
       };
 
       setEditId(ep._id);
@@ -215,34 +223,38 @@ export function useEndpointStudio() {
     [editId, formValues, close]
   );
 
-  const generateAiTemplate = useCallback(async () => {
-    if (!formValues.description.trim()) {
-      setError("Description is required to generate a template");
-      return;
-    }
-    setGeneratingTemplate(true);
-    setError("");
-    try {
-      const res = await generateTemplate({
-        description: formValues.description,
-        instruction: formValues.templatePrompt,
-        method: formValues.method,
-        endpoint: formValues.endpoint,
-        parameters: formValues.parameters,
-      });
-      const updatedValues = {
-        ...formValues,
-        enableTemplate: true,
-        template: res.template,
-      };
-      setFormValues(updatedValues);
-      runPreview(updatedValues);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate AI template");
-    } finally {
-      setGeneratingTemplate(false);
-    }
-  }, [formValues, runPreview]);
+  const generateAiTemplate = useCallback(
+    async (target: "A" | "B" = "A") => {
+      setGeneratingTemplate(true);
+      setError("");
+      try {
+        const res = await generateTemplate({
+          description: formValues.description,
+          instruction:
+            target === "B"
+              ? `${formValues.templatePrompt || formValues.description} (Dark Theme / Alternate Alert State)`
+              : formValues.templatePrompt,
+          method: formValues.method,
+          endpoint: formValues.endpoint,
+          parameters: formValues.parameters,
+          enableJsonata: formValues.enableJsonata,
+          jsonataCode: formValues.jsonataCode,
+        });
+        const updatedValues = {
+          ...formValues,
+          enableTemplate: true,
+          ...(target === "B" ? { templateB: res.template } : { template: res.template }),
+        };
+        setFormValues(updatedValues);
+        runPreview(updatedValues);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to generate AI template");
+      } finally {
+        setGeneratingTemplate(false);
+      }
+    },
+    [formValues, runPreview]
+  );
 
   const generateAiJsonata = useCallback(async () => {
     setGeneratingJsonata(true);
@@ -281,6 +293,8 @@ export function useEndpointStudio() {
         method: formValues.method,
         endpoint: formValues.endpoint,
         parameters: formValues.parameters,
+        enableJsonata: formValues.enableJsonata,
+        jsonataCode: formValues.jsonataCode,
       });
       const updatedValues = {
         ...formValues,
@@ -315,6 +329,8 @@ export function useEndpointStudio() {
         jsonlogicCode: res.jsonlogicCode || formValues.jsonlogicCode,
         enableTemplate: res.enableTemplate,
         template: res.template || formValues.template,
+        templateB: res.templateB || formValues.templateB,
+        enableDualTemplate: res.enableDualTemplate ?? formValues.enableDualTemplate,
         enableJavascript: res.enableJavascript,
         javascriptCode: res.javascriptCode || formValues.javascriptCode,
       };

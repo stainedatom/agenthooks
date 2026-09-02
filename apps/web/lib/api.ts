@@ -159,6 +159,8 @@ export interface Endpoint {
   method: string;
   endpoint?: string;
   template?: string;
+  templateB?: string;
+  enableDualTemplate?: boolean;
   parameters?: Record<string, unknown>;
   scriptType?: "none" | "javascript" | "jsonata" | "jsonlogic";
   scriptCode?: string;
@@ -184,6 +186,8 @@ export async function createEndpoint(data: {
   method: string;
   endpoint?: string;
   template?: string;
+  templateB?: string;
+  enableDualTemplate?: boolean;
   parameters?: Record<string, unknown>;
   scriptType?: "none" | "javascript" | "jsonata" | "jsonlogic";
   scriptCode?: string;
@@ -204,6 +208,8 @@ export async function updateEndpoint(
     method: string;
     endpoint?: string;
     template?: string;
+    templateB?: string;
+    enableDualTemplate?: boolean;
     parameters?: Record<string, unknown>;
     scriptType?: "none" | "javascript" | "jsonata" | "jsonlogic";
     scriptCode?: string;
@@ -246,6 +252,8 @@ export async function previewEndpoint(data: {
   method: string;
   endpoint?: string;
   template?: string;
+  templateB?: string;
+  enableDualTemplate?: boolean;
   parameters?: Record<string, unknown> | string;
   javascriptCode?: string;
   jsonataCode?: string;
@@ -263,6 +271,8 @@ export async function generateTemplate(data: {
   method?: string;
   endpoint?: string;
   parameters?: Record<string, unknown> | string;
+  enableJsonata?: boolean;
+  jsonataCode?: string;
 }): Promise<{ template: string }> {
   return request<{ template: string }>("/api/endpoints/generate-template", {
     method: "POST",
@@ -271,12 +281,14 @@ export async function generateTemplate(data: {
 }
 
 export async function generateScript(data: {
-  scriptType: "jsonata" | "jsonlogic";
+  scriptType: "jsonata" | "jsonlogic" | "javascript";
   description: string;
   instruction?: string;
   method?: string;
   endpoint?: string;
   parameters?: Record<string, unknown> | string;
+  enableJsonata?: boolean;
+  jsonataCode?: string;
 }): Promise<{ code: string }> {
   return request<{ code: string }>("/api/endpoints/generate-script", {
     method: "POST",
@@ -291,6 +303,8 @@ export interface FullPipelineConfig {
   jsonlogicCode: string;
   enableTemplate: boolean;
   template: string;
+  templateB?: string;
+  enableDualTemplate?: boolean;
   enableJavascript: boolean;
   javascriptCode: string;
 }

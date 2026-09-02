@@ -89,7 +89,7 @@ export function EndpointStudioOverlay({
         />
       </header>
       <div className="flex-1 flex min-h-0 overflow-hidden bg-gray-100">
-        <div className="w-1/2 overflow-y-auto p-6 border-r border-gray-200 flex flex-col gap-6 bg-white max-w-3xl">
+        <div className="w-[52%] shrink-0 overflow-y-auto p-6 border-r border-gray-200 flex flex-col gap-6 bg-white shadow-2xs">
           <EndpointForm
             id={formId}
             values={formValues}
