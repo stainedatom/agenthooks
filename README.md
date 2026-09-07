@@ -1,159 +1,153 @@
-# Turborepo starter
+# Agent Hooks 🚀
 
-This Turborepo starter is maintained by the Turborepo core team.
+A modern monorepo platform for creating, testing, and orchestrating dynamic AI-powered API endpoints and pipeline transformations.
 
-## Using this example
+---
 
-Run the following command:
+## 📚 Table of Contents
 
-```sh
-npx create-turbo@latest
+- [Overview](#-overview)
+- [Monorepo Structure](#-monorepo-structure)
+- [Quick Start](#-quick-start)
+- [Environment Setup & Configuration](#-environment-setup--configuration)
+  - [API Environment Variables (`apps/api`)](#api-environment-variables-appsapi)
+  - [Web Environment Variables (`apps/web`)](#web-environment-variables-appsweb)
+- [Available Scripts](#-available-scripts)
+- [Tech Stack](#-tech-stack)
+
+---
+
+## 🔍 Overview
+
+**Agent Hooks** provides a full-stack environment to generate, manage, and execute dynamic backend hooks and AI-assisted pipelines.
+
+Key capabilities include:
+- **Dynamic API Endpoints**: Define custom endpoints with customizable request execution scripts (JavaScript, JSONata, JSON Logic).
+- **AI-Powered Generation**: Integrate with Ollama to generate templates, pipeline scripts, and natural language responses.
+- **Endpoint Collections**: Group and manage related API hooks into logical collections.
+- **Zero-Config Core Services**: Intelligent fallbacks allow developers to run the core server and database stack out of the box with zero mandatory configuration. AI features can be activated by providing your Ollama credentials and model.
+
+---
+
+## 📁 Monorepo Structure
+
+```text
+agenthooks/
+├── apps/
+│   ├── api/             # Express.js REST API server (MongoDB, JWT Auth, Ollama AI)
+│   └── web/             # Next.js frontend web application (React, Tailwind CSS)
+├── packages/
+│   ├── ui/              # Shared React component library
+│   ├── eslint-config/   # Shared ESLint configuration
+│   └── typescript-config/ # Shared tsconfig bases
+├── .env.example         # Workspace environment template
+├── pnpm-workspace.yaml  # Monorepo workspace configuration
+└── turbo.json           # Turborepo task pipeline configuration
 ```
 
-## What's inside?
+---
 
-This Turborepo includes the following packages/apps:
+## 🚀 Quick Start
 
-### Apps and Packages
+> [!NOTE]
+> Prerequisites: Node.js `^18.0.0` or higher and `pnpm ^9.0.0`.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+### 1. Clone & Install Dependencies
 
 ```sh
-cd my-turborepo
-turbo build
+git clone <repository-url>
+cd agenthooks
+pnpm install
 ```
 
-Without global `turbo`, use your package manager:
+### 2. Run Development Mode
+
+Start both the backend API and frontend web client simultaneously:
 
 ```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
+pnpm dev
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+- **Web App**: [http://localhost:3000](http://localhost:3000)
+- **API Server**: [http://localhost:4000](http://localhost:4000)
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+---
 
-```sh
-turbo build --filter=docs
-```
+## ⚙️ Environment Setup & Configuration
 
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
+Agent Hooks comes with safe development fallbacks for core services, while AI-assisted capabilities require configuring your AI provider credentials and model.
 
 > [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+> To configure local development or production deployments, copy the provided `.env.example` templates to `.env.local`:
 
 ```sh
-cd my-turborepo
-turbo login
+# Copy API configuration template
+cp apps/api/.env.example apps/api/.env.local
+
+# Copy Web configuration template
+cp apps/web/.env.example apps/web/.env.local
 ```
 
-Without global `turbo`, use your package manager:
+### API Environment Variables (`apps/api`)
+
+| Variable | Description | Default Fallback | Required |
+| :--- | :--- | :--- | :---: |
+| `PORT` | HTTP server port | `4000` | No |
+| `NODE_ENV` | Environment mode (`development` / `production`) | `development` | No |
+| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/agenthooks` | No |
+| `DB_NAME` | Database name | `agenthooks` | No |
+| `ACCESS_TOKEN_SECRET` | Secret key for signing JWT access tokens | `dev-access-secret` | No |
+| `REFRESH_TOKEN_SECRET` | Secret key for signing JWT refresh tokens | `dev-refresh-secret` | No |
+| `CLIENT_ORIGIN` | Allowed client origin for CORS requests | `http://localhost:3000` | No |
+| `OLLAMA_BASE_URL` | Ollama API base URL | `https://ollama.com/api` | No |
+| `OLLAMA_API_KEY` | Ollama API authentication key for cloud models | *None* | **Yes** (for AI features) |
+| `AI_MODEL` | AI model name used for code/script generation (e.g. `deepseek-v4-flash`) | *None* | **Yes** (for AI features) |
+
+### Web Environment Variables (`apps/web`)
+
+| Variable | Description | Default Fallback | Required |
+| :--- | :--- | :--- | :---: |
+| `NEXT_PUBLIC_API_URL` | Backend API base URL for client requests | `http://localhost:4000` | No |
+| `NEXT_PUBLIC_APP_NAME` | Application display title | `Agent Hooks` | No |
+
+---
+
+## 🛠️ Available Scripts
+
+Run scripts from the workspace root using `pnpm` and `turbo`:
+
+### Monorepo Tasks
 
 ```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
+# Start development servers (all apps)
+pnpm dev
+
+# Build all applications and packages for production
+pnpm build
+
+# Run ESLint across all apps and packages
+pnpm lint
+
+# Format code with Prettier
+pnpm format
+
+# Run TypeScript type checks
+pnpm check-types
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+### Targeting Specific Apps
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+You can run commands for a specific app using Turborepo filters:
 
 ```sh
-turbo link
+# Run API dev server only
+pnpm dev --filter=api
+
+# Run Web dev server only
+pnpm dev --filter=web
+
+# Build only the Web project
+pnpm build --filter=web
 ```
 
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+---
