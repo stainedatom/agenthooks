@@ -459,16 +459,14 @@ export default function EndpointForm({
             onEnableChange={(val) => update("enableJavascript", val)}
             value={values.javascriptCode}
             onValueChange={(val) => update("javascriptCode", val)}
-            placeholder={`// Client-side script. Executes directly in the browser iframe.
-// Exposes 'data' / 'input' as local variables containing the API response.
-let count = 0;
-const btn = document.getElementById('counterBtn');
-if (btn) {
-  btn.addEventListener('click', () => {
-    count++;
-    btn.textContent = \`Clicked \${count} times\`;
-  });
-}`}
+            placeholder={`// Client-side script. Executes directly in browser iframe.
+// Exposes 'data' / 'input' as local variables.
+// Built-in host API helpers:
+// - downloadFile(filename, content, mimeType) or downloadFile({ filename, content, mimeType })
+// - postMessageToHost(type, payload)
+
+// Example: Trigger file download directly from sandbox
+// downloadFile('export.csv', 'id,name\\n1,Item', 'text/csv');`}
             checkboxLabel="Enable JavaScript"
             language="javascript"
             height="260px"

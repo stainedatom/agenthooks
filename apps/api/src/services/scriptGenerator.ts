@@ -89,6 +89,9 @@ export function generateFallbackJsonlogicCode(sampleData: unknown): string {
 export function generateFallbackJavascriptCode(): string {
   return `// Client-side script. Executes directly in the browser iframe.
 // Exposes 'data' / 'input' as local variables containing the API response.
+// Built-in global API helpers:
+//   downloadFile(filename, content, mimeType) or downloadFile({ filename, content, mimeType })
+//   postMessageToHost(type, payload)
 console.log("Pipeline data loaded:", data);`;
 }
 
@@ -217,6 +220,10 @@ CUSTOM INSTRUCTION DIRECTIVE: "${userDirective}"
 
 AVAILABLE DATA (exposed as local variable 'data'):
 ${jsonSample}
+
+BUILT-IN GLOBAL API HELPERS (AVAILABLE DIRECTLY):
+- downloadFile(filename, content, mimeType) or downloadFile({ filename, content, mimeType }): Triggers a browser file download from the sandbox iframe.
+- postMessageToHost(type, payload): Sends a postMessage event to the parent host window.
 
 CRITICAL RULES:
 1. Output ONLY the raw executable JavaScript code string — NO markdown fences (no \`\`\`js or \`\`\`javascript), NO preamble, NO HTML tags.

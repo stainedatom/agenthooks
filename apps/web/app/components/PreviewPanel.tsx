@@ -17,11 +17,31 @@ export default function PreviewPanel({
 }: PreviewPanelProps) {
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
-      if (event.data && event.data.type === "resize-iframe") {
+      if (!event.data) return;
+      if (event.data.type === "resize-iframe") {
         const iframe = document.getElementById("studio-preview-iframe") as HTMLIFrameElement;
         if (iframe && iframe.contentWindow === event.source) {
           iframe.style.height = `${event.data.height}px`;
         }
+      } else if (event.data.type === "download-file") {
+        const { filename, content, mimeType } = event.data;
+        const blob = new Blob([content], { type: mimeType || "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename || "download.txt";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else if (
+        event.data &&
+        typeof event.data === "object" &&
+        event.data.type &&
+        !String(event.data.type).startsWith("webpack") &&
+        !String(event.data.type).startsWith("__")
+      ) {
+        console.log("[Host App] Received postMessage:", event.data);
       }
     }
     window.addEventListener("message", handleMessage);
