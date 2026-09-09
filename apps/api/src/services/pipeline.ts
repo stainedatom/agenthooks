@@ -4,6 +4,7 @@ import jsonata from "jsonata";
 import jsonLogic from "json-logic-js";
 import { compileTailwind } from "./compile";
 import { generateResponseInNaturalLanguage } from "./ResponseInNaturalLanguage";
+import { generateClientSdkScript, wrapClientJavascript } from "./clientSdk";
 
 // Register custom Handlebars helpers
 Handlebars.registerHelper("firstLetter", (str) => (typeof str === "string" && str.length > 0 ? str.charAt(0).toUpperCase() : ""));
@@ -156,69 +157,8 @@ export function injectClientScripts(html: string, data: any, javascriptCode?: st
   const jsonString = (JSON.stringify(data ?? {}) || "{}").replace(/<\/script/gi, '<\\/script');
   const dataScript = `<script id="aghentooks-data" type="application/json">${jsonString}</script>`;
 
-  const apiHelperScript = `
-<script>
-  (function() {
-    // Hardcoded global postMessage API helper for user scripts & embedded HTML
-    window.postMessageToHost = function(typeOrObj, payload) {
-      try {
-        if (typeof typeOrObj === 'object' && typeOrObj !== null) {
-          window.parent.postMessage(typeOrObj, '*');
-        } else {
-          window.parent.postMessage(Object.assign({ type: typeOrObj }, payload || {}), '*');
-        }
-      } catch (err) {
-        console.error("Error sending postMessage to host:", err);
-      }
-    };
-
-    window.postMessageHost = window.postMessageToHost;
-
-    // Hardcoded downloadFile helper function
-    window.downloadFile = function(filenameOrOptions, content, mimeType) {
-      try {
-        if (typeof filenameOrOptions === 'object' && filenameOrOptions !== null) {
-          const fn = filenameOrOptions.filename || 'download.txt';
-          const cnt = filenameOrOptions.content || '';
-          const mime = filenameOrOptions.mimeType || 'text/plain';
-          window.postMessageToHost('download-file', { filename: fn, content: cnt, mimeType: mime });
-        } else {
-          window.postMessageToHost('download-file', {
-            filename: filenameOrOptions || 'download.txt',
-            content: content || '',
-            mimeType: mimeType || 'text/plain'
-          });
-        }
-      } catch (err) {
-        console.error("Error triggering file download:", err);
-      }
-    };
-  })();
-</script>
-`;
-
-  let clientJavascriptScript = "";
-  if (javascriptCode) {
-    clientJavascriptScript = `
-<script>
-  (function() {
-    try {
-      const data = JSON.parse(document.getElementById('aghentooks-data').textContent || '{}');
-      const input = data;
-
-      // Local shortcuts for hardcoded host API helpers
-      const postMessageToHost = window.postMessageToHost;
-      const postMessageHost = window.postMessageHost;
-      const downloadFile = window.downloadFile;
-
-      ${javascriptCode}
-    } catch (err) {
-      console.error("Error executing client-side script:", err);
-    }
-  })();
-</script>
-`;
-  }
+  const apiHelperScript = generateClientSdkScript();
+  const clientJavascriptScript = javascriptCode ? wrapClientJavascript(javascriptCode) : "";
 
   const autoResizeScript = `
 <script>

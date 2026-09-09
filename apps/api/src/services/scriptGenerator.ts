@@ -89,9 +89,9 @@ export function generateFallbackJsonlogicCode(sampleData: unknown): string {
 export function generateFallbackJavascriptCode(): string {
   return `// Client-side script. Executes directly in the browser iframe.
 // Exposes 'data' / 'input' as local variables containing the API response.
-// Built-in global API helpers:
-//   downloadFile(filename, content, mimeType) or downloadFile({ filename, content, mimeType })
-//   postMessageToHost(type, payload)
+// Built-in AgentHooks SDK helpers (window.agenthooks or agenthooks):
+//   agenthooks.downloadFile(filename, content, mimeType) or agenthooks.downloadFile({ filename, content, mimeType })
+//   agenthooks.postMessageToHost(type, payload)
 console.log("Pipeline data loaded:", data);`;
 }
 
@@ -221,9 +221,10 @@ CUSTOM INSTRUCTION DIRECTIVE: "${userDirective}"
 AVAILABLE DATA (exposed as local variable 'data'):
 ${jsonSample}
 
-BUILT-IN GLOBAL API HELPERS (AVAILABLE DIRECTLY):
-- downloadFile(filename, content, mimeType) or downloadFile({ filename, content, mimeType }): Triggers a browser file download from the sandbox iframe.
-- postMessageToHost(type, payload): Sends a postMessage event to the parent host window.
+BUILT-IN AGENTHOOKS SDK HELPERS (AVAILABLE VIA 'window.agenthooks' OR DIRECTLY AS 'agenthooks'):
+- agenthooks.downloadFile(filename, content, mimeType) or agenthooks.downloadFile({ filename, content, mimeType }): Triggers a browser file download from the sandbox iframe.
+- agenthooks.postMessageToHost(type, payload): Sends a postMessage event to the parent host window.
+(Always call helpers through the 'agenthooks' namespace, e.g. 'agenthooks.downloadFile(...)' or 'agenthooks.postMessageToHost(...)'.)
 
 CRITICAL RULES:
 1. Output ONLY the raw executable JavaScript code string — NO markdown fences (no \`\`\`js or \`\`\`javascript), NO preamble, NO HTML tags.

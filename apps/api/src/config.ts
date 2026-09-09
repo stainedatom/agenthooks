@@ -10,5 +10,5 @@ export const config = {
   clientOrigin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || "https://ollama.com/api",
   ollamaApiKey: process.env.OLLAMA_API_KEY,
-  aiModel: process.env.AI_MODEL
+  aiModel: (process.env.AI_MODEL || "") as string,
 };
