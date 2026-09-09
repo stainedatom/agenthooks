@@ -89,6 +89,20 @@ export async function fetchDataFromExternalEndpoint(
   }
 
   if (!response.ok) {
+    // Give actionable guidance when the external API rejects authorization,
+    // so users know whether to add or fix the Bearer token on this endpoint.
+    if (response.status === 401 || response.status === 403) {
+      const hasToken = Boolean(
+        authorization && typeof authorization === "string" && authorization.trim()
+      );
+      const authHint = hasToken
+        ? "The provided Bearer token may be invalid or expired — update it on this endpoint."
+        : "This endpoint appears to require authentication — add a Bearer token to it.";
+      throw new Error(
+        `External API responded with ${response.status} (Unauthorized). ${authHint}`
+      );
+    }
+
     throw new Error(`External API responded with status ${response.status}`);
   }
 
