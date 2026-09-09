@@ -459,14 +459,14 @@ export default function EndpointForm({
             onEnableChange={(val) => update("enableJavascript", val)}
             value={values.javascriptCode}
             onValueChange={(val) => update("javascriptCode", val)}
-            placeholder={`// Client-side script. Executes directly in browser iframe.
-// Exposes 'data' / 'input' as local variables.
-// Built-in host API helpers:
-// - downloadFile(filename, content, mimeType) or downloadFile({ filename, content, mimeType })
-// - postMessageToHost(type, payload)
+            placeholder={`// Client-side script — executes in the browser iframe.
+// 'data' / 'input' hold the pipeline response.
+// SDK helpers via the agenthooks namespace:
+//   agenthooks.downloadFile('report.csv', content, 'text/csv')
+//   agenthooks.downloadFile({ filename, content, mimeType })
+//   agenthooks.postMessageToHost('event-name', { key: 'value' })
 
-// Example: Trigger file download directly from sandbox
-// downloadFile('export.csv', 'id,name\\n1,Item', 'text/csv');`}
+console.log('[AgentHooks] data:', data);`}
             checkboxLabel="Enable JavaScript"
             language="javascript"
             height="260px"

@@ -4,7 +4,7 @@ import jsonata from "jsonata";
 import jsonLogic from "json-logic-js";
 import { compileTailwind } from "./compile";
 import { generateResponseInNaturalLanguage } from "./ResponseInNaturalLanguage";
-import { generateClientSdkScript, wrapClientJavascript } from "./clientSdk";
+import { generateClientSdkScript, wrapClientJavascript } from "./clientSdk/index";
 
 // Register custom Handlebars helpers
 Handlebars.registerHelper("firstLetter", (str) => (typeof str === "string" && str.length > 0 ? str.charAt(0).toUpperCase() : ""));
@@ -154,6 +154,8 @@ export async function renderTemplateHtml(
  * Injects client-side data and scripts into the rendered HTML.
  */
 export function injectClientScripts(html: string, data: any, javascriptCode?: string): string {
+  // NOTE: Element ID "aghentooks-data" is intentionally kept as-is (legacy spelling with transposed letters).
+  // wrapClientJavascript in clientSdk/index.ts reads this same ID — both sides must stay in sync.
   const jsonString = (JSON.stringify(data ?? {}) || "{}").replace(/<\/script/gi, '<\\/script');
   const dataScript = `<script id="aghentooks-data" type="application/json">${jsonString}</script>`;
 

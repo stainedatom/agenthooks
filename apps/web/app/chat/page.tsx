@@ -6,6 +6,7 @@ import { useRef, useEffect, useState } from "react";
 import { Send, Loader2, Bot, User, StopCircle, ChevronDown } from "lucide-react";
 import { marked } from "marked";
 import { listCollections, EndpointCollection } from "../../lib/api";
+import { useAgentHooksMessageListener } from "../../lib/agenthooks/useAgentHooksMessageListener";
 
 export default function ChatPage() {
   const [collections, setCollections] = useState<EndpointCollection[]>([]);
@@ -84,36 +85,9 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Listen for messages from sandboxed iframes (resize, downloads, etc.)
-  useEffect(() => {
-    function handleMessage(event: MessageEvent) {
-      if (!event.data) return;
-
-      if (event.data.type === "resize-iframe") {
-        const iframes = document.querySelectorAll("iframe");
-        iframes.forEach((iframe) => {
-          if (iframe.contentWindow === event.source) {
-            const maxHeight = 600;
-            const targetHeight = Math.min(event.data.height, maxHeight);
-            iframe.style.height = `${targetHeight}px`;
-          }
-        });
-      } else if (event.data.type === "download-file") {
-        const { filename, content, mimeType } = event.data;
-        const blob = new Blob([content], { type: mimeType || "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename || "download.txt";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
-    }
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  // Handle postMessage events from sandboxed iframes (resize, download-file, etc.)
+  // via the shared, ref-counted listener in lib/agenthooks.
+  useAgentHooksMessageListener();
 
   const isLoading = status === "streaming" || status === "submitted";
 

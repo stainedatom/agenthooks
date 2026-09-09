@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   createCollection,
   updateCollection,
   addEndpointsToCollection,
   EndpointCollection,
 } from "../../lib/api";
+import { useAgentHooksMessageListener } from "../../lib/agenthooks/useAgentHooksMessageListener";
 import RunModal from "../components/RunModal";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import { useDashboardData } from "./hooks/useDashboardData";
@@ -57,25 +58,9 @@ export default function DashboardPage() {
   // Add-to-collection modal state
   const [showAddToCollectionModal, setShowAddToCollectionModal] = useState(false);
 
-  // Listen for download-file messages from sandboxed preview or execution iframes
-  useEffect(() => {
-    function handleMessage(event: MessageEvent) {
-      if (event.data && event.data.type === "download-file") {
-        const { filename, content, mimeType } = event.data;
-        const blob = new Blob([content], { type: mimeType || "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename || "download.txt";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
-    }
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  // Handle postMessage events from sandboxed iframes (resize, download-file, etc.)
+  // via the shared, ref-counted listener in lib/agenthooks.
+  useAgentHooksMessageListener();
 
   if (loading) {
     return (

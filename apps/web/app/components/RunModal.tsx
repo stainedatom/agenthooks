@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { Endpoint, ExecuteResult } from "../../lib/api";
 import MethodBadge from "./MethodBadge";
+import { useAgentHooksMessageListener } from "../../lib/agenthooks/useAgentHooksMessageListener";
 
 
 interface RunModalProps {
@@ -22,38 +22,10 @@ export default function RunModal({
   onRefresh,
   onClose,
 }: RunModalProps) {
-  useEffect(() => {
-    function handleMessage(event: MessageEvent) {
-      if (!event.data) return;
-      if (event.data.type === "resize-iframe") {
-        const iframe = document.getElementById("run-modal-iframe") as HTMLIFrameElement;
-        if (iframe && iframe.contentWindow === event.source) {
-          iframe.style.height = `${event.data.height}px`;
-        }
-      } else if (event.data.type === "download-file") {
-        const { filename, content, mimeType } = event.data;
-        const blob = new Blob([content], { type: mimeType || "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename || "download.txt";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else if (
-        event.data &&
-        typeof event.data === "object" &&
-        event.data.type &&
-        !String(event.data.type).startsWith("webpack") &&
-        !String(event.data.type).startsWith("__")
-      ) {
-        console.log("[Host App] Received postMessage:", event.data);
-      }
-    }
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  // Handle postMessage events from the sandboxed execution iframe (resize,
+  // download-file, etc.) via the shared listener. The iframe is located by
+  // event.source, so this works for the run-modal iframe instance.
+  useAgentHooksMessageListener();
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-5 animate-in fade-in duration-150">
