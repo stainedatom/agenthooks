@@ -8,6 +8,7 @@ export interface EndpointFormValues {
   description: string;
   method: string;
   endpoint: string;
+  authorization: string;
   parameters: string;
   enableJsonata: boolean;
   jsonataCode: string;
@@ -28,6 +29,7 @@ export const defaultFormValues: EndpointFormValues = {
   description: "",
   method: "GET",
   endpoint: "",
+  authorization: "",
   parameters: "",
   enableJsonata: false,
   jsonataCode: "",
@@ -178,6 +180,27 @@ export default function EndpointForm({
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition-all font-mono bg-gray-50/50 focus:bg-white"
               placeholder="https://api.example.com/data"
             />
+          </div>
+        )}
+
+        {/* Authorization Bearer Token */}
+        {values.method !== "NONE" && (
+          <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+            <label className="text-sm font-medium text-gray-700">
+              Bearer Token <span className="text-gray-400 font-normal text-xs">(Optional)</span>
+            </label>
+            <input
+              type="password"
+              value={values.authorization}
+              onChange={(e) => update("authorization", e.target.value)}
+              autoComplete="off"
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-400 transition-all font-mono bg-gray-50/50 focus:bg-white"
+              placeholder="External API key / access token"
+            />
+            <p className="text-xxs text-gray-400 mt-0.5">
+              Sent as <span className="font-mono">Authorization: Bearer &lt;token&gt;</span> when this endpoint fetches
+              data from the external API. Stored with the endpoint and injected automatically on every execution.
+            </p>
           </div>
         )}
 

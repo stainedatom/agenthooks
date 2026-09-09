@@ -158,6 +158,7 @@ export interface Endpoint {
   description: string;
   method: string;
   endpoint?: string;
+  authorization?: string;
   template?: string;
   templateB?: string;
   enableDualTemplate?: boolean;
@@ -185,6 +186,7 @@ export async function createEndpoint(data: {
   description: string;
   method: string;
   endpoint?: string;
+  authorization?: string;
   template?: string;
   templateB?: string;
   enableDualTemplate?: boolean;
@@ -207,6 +209,7 @@ export async function updateEndpoint(
     description: string;
     method: string;
     endpoint?: string;
+    authorization?: string;
     template?: string;
     templateB?: string;
     enableDualTemplate?: boolean;
@@ -251,6 +254,7 @@ export async function previewEndpoint(data: {
   description: string;
   method: string;
   endpoint?: string;
+  authorization?: string;
   template?: string;
   templateB?: string;
   enableDualTemplate?: boolean;
@@ -270,6 +274,7 @@ export async function generateTemplate(data: {
   instruction?: string;
   method?: string;
   endpoint?: string;
+  authorization?: string;
   parameters?: Record<string, unknown> | string;
   enableJsonata?: boolean;
   jsonataCode?: string;
@@ -286,6 +291,7 @@ export async function generateScript(data: {
   instruction?: string;
   method?: string;
   endpoint?: string;
+  authorization?: string;
   parameters?: Record<string, unknown> | string;
   enableJsonata?: boolean;
   jsonataCode?: string;
@@ -314,6 +320,7 @@ export async function generateFullPipeline(data: {
   instruction?: string;
   method?: string;
   endpoint?: string;
+  authorization?: string;
   parameters?: Record<string, unknown> | string;
 }): Promise<FullPipelineConfig> {
   return request<FullPipelineConfig>("/api/endpoints/generate-full-pipeline", {

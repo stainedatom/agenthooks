@@ -26,6 +26,7 @@ Handlebars.registerHelper("default", (val, fallback) => val || fallback);
 export interface PipelineOptions {
   method: string;
   endpoint?: string;
+  authorization?: string;
   template?: string;
   templateB?: string;
   enableDualTemplate?: boolean;
@@ -41,13 +42,23 @@ export interface PipelineOptions {
  * Fetches data from an external API endpoint.
  * GET requests pass executionParams as query string parameters.
  * POST/PUT/PATCH requests pass executionParams as JSON body.
+ *
+ * If `authorization` is provided, an `Authorization: Bearer <token>` header
+ * is attached so authenticated external APIs can be called.
  */
 export async function fetchDataFromExternalEndpoint(
   method: string,
   endpoint: string,
-  executionParams: Record<string, any>
+  executionParams: Record<string, any>,
+  authorization?: string
 ): Promise<any> {
   const fetchOptions: RequestInit = { method };
+  const headers: Record<string, string> = {};
+
+  if (authorization && typeof authorization === "string" && authorization.trim()) {
+    headers["Authorization"] = `Bearer ${authorization.trim()}`;
+  }
+
   let fetchUrl = endpoint;
 
   if (method === "GET") {
@@ -62,7 +73,11 @@ export async function fetchDataFromExternalEndpoint(
     }
   } else if (["POST", "PUT", "PATCH"].includes(method)) {
     fetchOptions.body = JSON.stringify(executionParams);
-    fetchOptions.headers = { "Content-Type": "application/json" };
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (Object.keys(headers).length > 0) {
+    fetchOptions.headers = headers;
   }
 
   let response: globalThis.Response;
@@ -254,7 +269,12 @@ export async function runPipeline(
 
   if (options.endpoint && options.method && options.method !== "NONE") {
     const fetchParams = hasExecutionParams ? executionParams : defaultParams;
-    data = await fetchDataFromExternalEndpoint(options.method, options.endpoint, fetchParams);
+    data = await fetchDataFromExternalEndpoint(
+      options.method,
+      options.endpoint,
+      fetchParams,
+      options.authorization
+    );
   } else {
     // Static / mock endpoint: merge default sample parameters with executionParams
     data = { ...defaultParams, ...(executionParams || {}) };

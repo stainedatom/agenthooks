@@ -61,6 +61,7 @@ export async function getDynamicEndpointsTools(userId: string, collectionId?: st
               {
                 method: endpointDoc.method,
                 endpoint: endpointDoc.endpoint,
+                authorization: endpointDoc.authorization,
                 template: endpointDoc.template,
                 compiledCss: endpointDoc.compiledCss,
                 parameters: endpointDoc.parameters,

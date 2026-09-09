@@ -65,6 +65,7 @@ function prepareSubmitPayload(values: EndpointFormValues) {
     description,
     method,
     endpoint,
+    authorization: values.authorization,
     template: enableTemplate ? template : "",
     templateB: enableTemplate && enableDualTemplate ? templateB : "",
     enableDualTemplate: enableTemplate ? Boolean(enableDualTemplate) : false,
@@ -115,6 +116,7 @@ export function useEndpointStudio() {
         description: values.description,
         method: values.method,
         endpoint: values.endpoint,
+        authorization: values.authorization,
         template: values.enableTemplate ? values.template : "",
         templateB: values.enableTemplate && values.enableDualTemplate ? values.templateB : "",
         enableDualTemplate: values.enableTemplate ? Boolean(values.enableDualTemplate) : false,
@@ -151,6 +153,7 @@ export function useEndpointStudio() {
         description: ep.description,
         method: ep.method,
         endpoint: ep.endpoint || "",
+        authorization: ep.authorization || "",
         parameters: ep.parameters ? JSON.stringify(ep.parameters, null, 2) : "",
         enableJavascript: !!jsCode,
         javascriptCode: jsCode || "",
@@ -236,6 +239,7 @@ export function useEndpointStudio() {
               : formValues.templatePrompt,
           method: formValues.method,
           endpoint: formValues.endpoint,
+          authorization: formValues.authorization,
           parameters: formValues.parameters,
           enableJsonata: formValues.enableJsonata,
           jsonataCode: formValues.jsonataCode,
@@ -266,6 +270,7 @@ export function useEndpointStudio() {
         instruction: formValues.jsonataPrompt,
         method: formValues.method,
         endpoint: formValues.endpoint,
+        authorization: formValues.authorization,
         parameters: formValues.parameters,
       });
       const updatedValues = {
@@ -292,6 +297,7 @@ export function useEndpointStudio() {
         instruction: formValues.jsonlogicPrompt,
         method: formValues.method,
         endpoint: formValues.endpoint,
+        authorization: formValues.authorization,
         parameters: formValues.parameters,
         enableJsonata: formValues.enableJsonata,
         jsonataCode: formValues.jsonataCode,
@@ -319,6 +325,7 @@ export function useEndpointStudio() {
         instruction: formValues.jsonataPrompt || formValues.templatePrompt,
         method: formValues.method,
         endpoint: formValues.endpoint,
+        authorization: formValues.authorization,
         parameters: formValues.parameters,
       });
       const updatedValues: EndpointFormValues = {

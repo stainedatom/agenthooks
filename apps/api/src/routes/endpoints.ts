@@ -28,6 +28,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       description,
       method,
       endpoint,
+      authorization,
       template,
       templateB,
       enableDualTemplate,
@@ -46,6 +47,12 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
     if (!["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"].includes(method)) {
       res.status(400).json({ error: "BadRequest", message: "Invalid HTTP method" });
+      return;
+    }
+
+    // Validate authorization token if provided
+    if (authorization !== undefined && authorization !== null && typeof authorization !== "string") {
+      res.status(400).json({ error: "BadRequest", message: "authorization must be a string" });
       return;
     }
 
@@ -157,6 +164,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       description,
       method,
       endpoint: endpoint || "",
+      authorization: authorization || "",
       template: template || "",
       templateB: templateB || "",
       enableDualTemplate: Boolean(enableDualTemplate),
@@ -288,6 +296,7 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
       description,
       method,
       endpoint,
+      authorization,
       template,
       templateB,
       enableDualTemplate,
@@ -306,6 +315,12 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
 
     if (!["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"].includes(method)) {
       res.status(400).json({ error: "BadRequest", message: "Invalid HTTP method" });
+      return;
+    }
+
+    // Validate authorization token if provided
+    if (authorization !== undefined && authorization !== null && typeof authorization !== "string") {
+      res.status(400).json({ error: "BadRequest", message: "authorization must be a string" });
       return;
     }
 
@@ -429,6 +444,7 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
       description,
       method,
       endpoint: endpoint || "",
+      authorization: authorization !== undefined && authorization !== null ? authorization : existingDoc.authorization || "",
       template: template || "",
       templateB: templateB || "",
       enableDualTemplate: Boolean(enableDualTemplate),
@@ -461,7 +477,7 @@ router.put("/:id", async (req: Request, res: Response): Promise<void> => {
 // POST /api/endpoints/generate-template — Generate Handlebars UI template using AI
 router.post("/generate-template", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, instruction, method, endpoint, parameters, enableJsonata, jsonataCode } = req.body;
+    const { description, instruction, method, endpoint, parameters, authorization, enableJsonata, jsonataCode } = req.body;
     const targetDirective = (instruction && instruction.trim()) || description || "";
 
     let parsedParams: Record<string, any> = {};
@@ -482,7 +498,7 @@ router.post("/generate-template", async (req: Request, res: Response): Promise<v
     // Fetch live API payload if endpoint and method are provided
     if (endpoint && method && method !== "NONE") {
       try {
-        sampleData = await fetchDataFromExternalEndpoint(method, endpoint, parsedParams);
+        sampleData = await fetchDataFromExternalEndpoint(method, endpoint, parsedParams, authorization);
       } catch (fetchErr: any) {
         console.warn("External API fetch failed during template generation, falling back to parameters:", fetchErr?.message);
         sampleData = parsedParams;
@@ -512,7 +528,7 @@ router.post("/generate-template", async (req: Request, res: Response): Promise<v
 // POST /api/endpoints/generate-script — Generate JSONata or JSON Logic scripts using AI
 router.post("/generate-script", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { scriptType, description, instruction, method, endpoint, parameters, enableJsonata, jsonataCode } = req.body;
+    const { scriptType, description, instruction, method, endpoint, parameters, authorization, enableJsonata, jsonataCode } = req.body;
     const targetDirective = (instruction && instruction.trim()) || description || "";
 
     if (!scriptType || (scriptType !== "jsonata" && scriptType !== "jsonlogic" && scriptType !== "javascript")) {
@@ -537,7 +553,7 @@ router.post("/generate-script", async (req: Request, res: Response): Promise<voi
 
     if (endpoint && method && method !== "NONE") {
       try {
-        sampleData = await fetchDataFromExternalEndpoint(method, endpoint, parsedParams);
+        sampleData = await fetchDataFromExternalEndpoint(method, endpoint, parsedParams, authorization);
       } catch (fetchErr: any) {
         console.warn("External API fetch failed during script generation, falling back to parameters:", fetchErr?.message);
         sampleData = parsedParams;
@@ -575,7 +591,7 @@ router.post("/generate-script", async (req: Request, res: Response): Promise<voi
 // POST /api/endpoints/generate-full-pipeline — Master AI Full Pipeline Orchestrator
 router.post("/generate-full-pipeline", async (req: Request, res: Response): Promise<void> => {
   try {
-    const { description, instruction, method, endpoint, parameters } = req.body;
+    const { description, instruction, method, endpoint, parameters, authorization } = req.body;
     const targetDirective = (instruction && instruction.trim()) || description || "";
 
     let parsedParams: Record<string, any> = {};
@@ -595,7 +611,7 @@ router.post("/generate-full-pipeline", async (req: Request, res: Response): Prom
 
     if (endpoint && method && method !== "NONE") {
       try {
-        sampleData = await fetchDataFromExternalEndpoint(method, endpoint, parsedParams);
+        sampleData = await fetchDataFromExternalEndpoint(method, endpoint, parsedParams, authorization);
       } catch (fetchErr: any) {
         console.warn("External API fetch failed during full pipeline generation, falling back to parameters:", fetchErr?.message);
         sampleData = parsedParams;
@@ -617,6 +633,7 @@ router.post("/preview", async (req: Request, res: Response): Promise<void> => {
       description,
       method,
       endpoint,
+      authorization,
       template,
       templateB,
       enableDualTemplate,
@@ -657,6 +674,7 @@ router.post("/preview", async (req: Request, res: Response): Promise<void> => {
         description,
         method,
         endpoint,
+        authorization,
         template,
         templateB,
         enableDualTemplate: Boolean(enableDualTemplate),
@@ -712,6 +730,7 @@ router.post("/:id/execute", async (req: Request, res: Response): Promise<void> =
       {
         method: endpointDoc.method,
         endpoint: endpointDoc.endpoint,
+        authorization: endpointDoc.authorization,
         template: endpointDoc.template,
         templateB: endpointDoc.templateB,
         enableDualTemplate: Boolean(endpointDoc.enableDualTemplate),
